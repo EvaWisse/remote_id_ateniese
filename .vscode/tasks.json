@@ -1,0 +1,34 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "cppbuild",
+			"label": "C/C++: gcc.exe build active file",
+			"command": "C:\\msys64\\mingw64\\bin\\gcc.exe",
+			"args": [
+				"-fdiagnostics-color=always",
+				"-I/usr/local/opt/openssl/include",
+				"-L/usr/local/opt/openssl/lib",
+				"-g",
+				// "${file}",
+				"${workspaceFolder}\\main.c",
+				"${workspaceFolder}\\setup.c",
+				"-o",
+				"${workspaceFolder}\\run.exe",
+				"-lssl",
+				"-lcrypto "
+			],
+			"options": {
+				"cwd": "${fileDirname}"
+			},
+			"problemMatcher": [
+				"$gcc"
+			],
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			},
+			"detail": "compiler: C:\\msys64\\mingw64\\bin\\gcc.exe"
+		}
+	]
+}

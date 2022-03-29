@@ -1,0 +1,25 @@
+#include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include <openssl/ec.h>
+#include <openssl/bn.h>
+#include <openssl/rsa.h> 
+#include <sys/types.h>
+#include <stdbool.h>
+#include <time.h>
+
+#include "public.h"
+
+void main()
+{
+  printf("test");
+  setup();
+}
+
+char* printer(BIGNUM* p)
+{
+  char * number_str = BN_bn2dec(p);
+  return number_str;
+}
