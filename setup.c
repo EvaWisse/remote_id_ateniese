@@ -11,33 +11,8 @@
 #include <time.h>
 
 #include "public.h"
-struct s_struct{
-  BIGNUM* p;
-  BIGNUM* q;
-  BIGNUM* x;
-};
 
-struct s_struct s;
-struct y_struct y;
-
-void init_s()
-{
-  s.p =BN_new();
-  s.q = BN_new();
-  s.x = BN_new();
-}
-
-void init_y()
-{
-    y.n = BN_new();
-    y.a = BN_new();
-    y.a0 = BN_new();
-    y.y = BN_new();
-    y.g = BN_new();
-    y.h = BN_new();
-}
-
-BIGNUM* select_QR()
+BIGNUM* select_QR(struct y_struct y)
 {
   BN_CTX* ctx= BN_CTX_new(); 
   BIGNUM* one = BN_new();
@@ -46,19 +21,16 @@ BIGNUM* select_QR()
   BIGNUM* bn_val1 = BN_new();
   BIGNUM* gcd = BN_new();
   BIGNUM* x = BN_new();
-
-  BN_rand_range(x, y.n); // select random x ∈ QR(n) 
-  BN_sub(bn_val, x, one); // x - 1
-  BN_gcd(bn_val1, y.n, bn_val, ctx); // gcd(n, x - 1)
-  BN_clear(bn_val);
-  BN_add(bn_val, x, one); // x + 1
-  BN_gcd(gcd, bn_val, y.n, ctx); // gcd(n, x + 1)
-  BN_clear(bn_val);  
   while (!(BN_is_one(gcd) && BN_is_one(bn_val1)))
   {
     BN_clear(bn_val1);
     BN_clear(bn_val);
-    BN_rand_range(x, y.n); // select random x ∈ QR(n) 
+    while(!BN_is_one(gcd))
+    {
+      BN_clear(gcd);
+      BN_rand_range(x, y.n); // select random x ∈ QR(n) 
+      BN_gcd(gcd, x, y.n, ctx);
+    }    
     BN_sub(bn_val, x, one); // x - 1
     BN_gcd(bn_val1, y.n, bn_val, ctx); // gcd(n, x - 1)
     BN_clear(bn_val);
@@ -70,12 +42,14 @@ BIGNUM* select_QR()
   BN_clear(bn_val);
   return x;
 }
-
-void setup()
+                                                                                                    
+struct y_struct setup()
 {
   // Initlize join struct and BN libary specific variables
-  init_s();
-  init_y();
+  struct s_struct s;
+  struct y_struct y;
+  s = init_s();
+  y = init_y();
   BN_CTX* ctx= BN_CTX_new(); 
   BIGNUM* one = BN_new();
   BN_one(one);
@@ -87,23 +61,24 @@ void setup()
   BIGNUM* gcd = BN_new();
 
   // Select random secret lp-bit primes p',q' such that p =2p' + 1 and q = 2q' + 1 are prime. 
-  BN_generate_prime_ex(s.p, lp, false, NULL, NULL, NULL); // get p'
+  BN_generate_prime_ex(s.p, lp, true, NULL, NULL, NULL); // get p'
   BN_add(bn_val, s.p, s.p); // p' + p'
-  BN_add(p, bn_val, one); // 2p' + 1
+  BN_generate_prime_ex(p, lp+1, false, bn_val, one, NULL);
   BN_clear(bn_val);
 
-  BN_generate_prime_ex(s.q, lp, false, NULL, NULL, NULL); // get q'
+  BN_generate_prime_ex(s.q, lp, true, NULL, NULL, NULL); // get q'
   BN_add(bn_val, s.q, s.q); // q' + q'
-  BN_add(q, bn_val, one); // 2q' + 1
+  BN_generate_prime_ex(q, lp+1, false, bn_val, one, NULL);
+  BN_clear(bn_val);
 
   // Set the modulus n = pq
   BN_mul(y.n, p, q, ctx); // n = pq
  
   // Choose random elements a, a0, g, h ∈ QR(n) (of order p'q') use proposition 1 and collary 1. 
-  y.a = select_QR();
-  y.a0 = select_QR();
-  y.g = select_QR();
-  y.h = select_QR();
+  y.a = select_QR(y);
+  y.a0 = select_QR(y);
+  y.g = select_QR(y);
+  y.h = select_QR(y);
 
   // Choose a random secret element x ∈ Z/p'q' 
   BN_mul(bn_val, s.q, s.p, ctx); // p'q'
@@ -111,4 +86,8 @@ void setup()
 
   // Set y = g^x mod n
   BN_mod_exp(y.y, y.g, s.x, y.n, ctx); // g^x mod n
+
+  printf("The Group Public Key \ty = (n, a, a0, y, g, h) = (%s, %s, %s, %s, %s, %s)\n", printer(y.n), printer(y.a), printer(y.a0), printer(y.y), printer(y.g), printer(y.h));
+  printf("The GM Private Key \ts = (p', q', x) = (%s, %s, %s)\n", printer(s.p), printer(s.q), printer(s.x));
+  return y;
 }
