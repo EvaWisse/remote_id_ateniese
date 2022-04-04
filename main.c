@@ -2,10 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#include <openssl/ec.h>
 #include <openssl/bn.h>
-#include <openssl/rsa.h> 
 #include <sys/types.h>
 #include <stdbool.h>
 #include <time.h>
@@ -21,11 +18,12 @@ void main()
   membership =  init_membership();
   signature = init_sign();
   y = init_y();
-
   y = setup();
   membership = join_member(y);
   signature = sign(y, membership);
   verify(y, signature);
+  open(signature, y);
+  
 }
 
 char* printer(BIGNUM* p)

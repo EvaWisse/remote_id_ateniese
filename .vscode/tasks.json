@@ -7,8 +7,8 @@
 			"command": "C:\\msys64\\mingw64\\bin\\gcc.exe",
 			"args": [
 				"-fdiagnostics-color=always",
-				"-I/usr/local/opt/openssl/include",
-				"-L/usr/local/opt/openssl/lib",
+				// "-I/usr/local/opt/openssl/include",
+				// "-L/usr/local/opt/openssl/lib",
 				"-g",
 				// "${file}",
 				"${workspaceFolder}\\main.c",
@@ -19,7 +19,7 @@
 				"${workspaceFolder}\\verify.c",
 				"-o",
 				"${workspaceFolder}\\run.exe",
-				"-lssl",
+				// "-lssl",
 				"-lcrypto "
 			],
 			"options": {

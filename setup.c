@@ -2,16 +2,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#include <openssl/ec.h>
 #include <openssl/bn.h>
-#include <openssl/rsa.h> 
 #include <sys/types.h>
 #include <stdbool.h>
 #include <time.h>
 
 #include "public.h"
-
+struct s_struct s;
 BIGNUM* select_QR(struct y_struct y)
 {
   BN_CTX* ctx= BN_CTX_new(); 
@@ -46,7 +43,7 @@ BIGNUM* select_QR(struct y_struct y)
 struct y_struct setup()
 {
   // Initlize join struct and BN libary specific variables
-  struct s_struct s;
+  // struct s_struct s;
   struct y_struct y;
   s = init_s();
   y = init_y();
@@ -90,4 +87,47 @@ struct y_struct setup()
   printf("The Group Public Key \ty = (n, a, a0, y, g, h) = (%s, %s, %s, %s, %s, %s)\n", printer(y.n), printer(y.a), printer(y.a0), printer(y.y), printer(y.g), printer(y.h));
   printf("The GM Private Key \ts = (p', q', x) = (%s, %s, %s)\n", printer(s.p), printer(s.q), printer(s.x));
   return y;
+}
+
+void open(struct sign_struct sign, struct y_struct y)
+{
+  BN_CTX* ctx= BN_CTX_new(); 
+  BIGNUM* one = BN_new();
+  BN_one(one);
+  BIGNUM* rec_A = BN_new();
+  BIGNUM* bn_val = BN_new();
+  BIGNUM* bn_val1= BN_new();
+  char* char_TA;
+  char* char_T2 ;
+  char* char_y;
+  char* char_g;
+  double lhs;
+  double rhs;
+
+  // Recover Ai
+  BN_mod_exp(bn_val, sign.T2, s.x, y.n, ctx); // T2^x
+  BN_mod_inverse(bn_val1, bn_val, y.n, ctx); // inv T2^x
+  BN_mod_mul(rec_A, bn_val1, sign.T1, y.n, ctx); // inv T2^x * T1
+
+  // Convert (T1/Ai) and T2
+  BN_mod_inverse(bn_val, rec_A, y.n, ctx); // inv Ai
+  BN_mod_mul(bn_val1, bn_val, sign.T1, y.n, ctx); // T1/Ai
+  char_TA = BN_bn2dec(bn_val1);
+  char_T2 = BN_bn2dec(sign.T2);
+
+  // Convert y and g
+  char_y = BN_bn2dec(y.y);
+  char_g = BN_bn2dec(y.g);
+  
+
+  // log_b(x) = log_k(x) / log_k(b)
+  lhs = log(strtod(char_y, NULL)) / log(strtod(char_g, NULL));
+  rhs = log(strtod(char_TA, NULL)) / log(strtod(char_T2,NULL));
+  if(fabs(lhs-rhs) <0.5)
+  {
+    printf("IDENTIFIED They're close enough \n");
+  }
+  else{
+    printf("NOT IDENTIFIED\n");
+  }
 }

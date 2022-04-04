@@ -2,9 +2,9 @@
 #define PUBLIC_H
 
   // Define the security parameters
-  static const uint64_t epsilon = 3;
-  static const uint64_t k = 3;
-  static const uint64_t lp = 7;
+  static const uint64_t epsilon = 1;
+  static const uint64_t k = 4;
+  static const uint64_t lp = 6;
   static const uint64_t lambda_2 = (4 * lp) + 1;
   static const uint64_t lambda_1 = (epsilon * (lambda_2 + k) + 2) + 1;
   static const uint64_t gamma_2 = (lambda_1 + 2) + 1;
@@ -63,6 +63,7 @@
   struct membership_struct join_member(struct y_struct y);
   struct sign_struct sign(struct y_struct y, struct membership_struct membership);
   void verify(struct y_struct y, struct sign_struct sign); 
+  void open(struct sign_struct sign, struct y_struct y);
 
   // Initlizing functions
   struct membership_struct init_membership();

@@ -3,9 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <openssl/ec.h>
 #include <openssl/bn.h>
-#include <openssl/rsa.h> 
 #include <sys/types.h>
 #include <stdbool.h>
 #include <time.h>
@@ -68,7 +66,7 @@ struct membership_struct join_member(struct y_struct y)
     BN_rand_range(r, bn_val);
   }
   BN_clear(bn_val);
-;
+
   // Calculate C1 = g^xh^r mod n
   BN_mod_exp(bn_val, y.g, x, y.n, ctx); // g^x
   BN_mod_exp(bn_val1, y.h, r, y.n, ctx); // h^r

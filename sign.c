@@ -2,13 +2,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <openssl/ec.h>
 #include <openssl/bn.h>
-#include <openssl/rsa.h>
+
 #include <openssl/sha.h>
 #include <sys/types.h>
-#include <openssl/crypto.h>
-#include <openssl/err.h>
+
 
 #include "public.h"
 
@@ -31,11 +29,15 @@ struct sign_struct sign(struct y_struct y, struct membership_struct membership)
   sign = init_sign();
   BN_CTX* ctx= BN_CTX_new();
   BIGNUM* one = BN_new();
+  BN_one(one);
   BIGNUM* bn_val = BN_new();
   BIGNUM* bn_val1 = BN_new();
   BIGNUM* bn_val2 = BN_new();
   BIGNUM* w = BN_new();
   uint64_t int_temp;
+  BIGNUM* invT1 = BN_new();
+  BIGNUM* invT2 = BN_new();
+  BIGNUM* invT3 = BN_new();
 
   // Calculate 2^2lp
   int_temp = lp + lp;
@@ -52,7 +54,7 @@ struct sign_struct sign(struct y_struct y, struct membership_struct membership)
   // Calculate T1
   BN_mod_exp(bn_val, y.y, w, y.n, ctx); // y^w
   BN_mod_mul(sign.T1, bn_val, membership.A, y.n, ctx); // Ay^w 
-  BN_clear(bn_val);
+  BN_clear(bn_val); 
 
   // Calculate T2
   BN_mod_exp(sign.T2, y.g, w, y.n, ctx); // g^w
@@ -90,16 +92,19 @@ struct sign_struct sign(struct y_struct y, struct membership_struct membership)
 
   // Compute d1
   BN_mod_exp(bn_val, y.a, hash.r2, y.n, ctx); // a^r2
-  BN_mod_exp(bn_val1, y.y, hash.r3, y.n, ctx); // y^r3
-  BN_mod_mul(bn_val2, bn_val, bn_val1, y.n, ctx);  // a^r2 * y^r3
+  BN_mod_inverse(bn_val2, bn_val, y.n, ctx); // 1/a^r2
   BN_clear(bn_val);
-  BN_mod_inverse(bn_val1, bn_val2, y.n, ctx); // 1/(a^r2 * y^r3)
+  BN_mod_exp(bn_val1, y.y, hash.r3, y.n, ctx); // y^r3
+  BN_mod_inverse(bn_val, bn_val1, y.n, ctx); // 1/y^r3
+  BN_mod_mul(bn_val1, bn_val2, bn_val, y.n, ctx);  // 1/a^r2 * 1/y^r3
+  BN_clear(bn_val2);
+  BN_clear(bn_val);
   BN_mod_exp(bn_val, sign.T1, hash.r1, y.n, ctx); // T1^r1
-  BN_mod_mul(hash.d1, bn_val, bn_val1, y.n, ctx); // T1^r1/(a^r2 * y^r3)
+  BN_mod_mul(hash.d1, bn_val1, bn_val, y.n, ctx); // T1^r1/(a^r2 * y^r3)
   BN_clear(bn_val);
   BN_clear(bn_val1);
   BN_clear(bn_val2);
-
+  
   // Compute d2
   BN_mod_exp(bn_val, y.g, hash.r3, y.n, ctx); // g^r3
   BN_mod_inverse(bn_val1, bn_val, y.n, ctx); // g^-r3
@@ -111,6 +116,7 @@ struct sign_struct sign(struct y_struct y, struct membership_struct membership)
 
   // Compute d3
   BN_mod_exp(hash.d3, y.g, hash.r4, y.n, ctx); // g^r4
+  printf("d3=g^r4=%s^%s mod %s\n", printer(y.g),printer(hash.r4), printer(y.n));
 
   // Compute d4
   BN_mod_exp(bn_val, y.g, hash.r1, y.n, ctx); // g^r1
@@ -121,6 +127,7 @@ struct sign_struct sign(struct y_struct y, struct membership_struct membership)
 
   // Compute Hash
   unsigned char hash_digest[k];
+  unsigned char memdump[k];
   SHA256_Init(&sha_ctx);
 
   hash_input(y.g);
@@ -133,16 +140,17 @@ struct sign_struct sign(struct y_struct y, struct membership_struct membership)
   // hash_input(hash.d1);
   hash_input(hash.d2);
   hash_input(hash.d3);
-  // hash_input(hash.d4);
+  hash_input(hash.d4);
 
   SHA256_Final(hash_digest, &sha_ctx);
+  // SHA256_End(&sha_ctx, hash_digest);
+  // OPENSSL_cleanse(&sha_ctx, sizeof(sha_ctx));
   BN_bin2bn(hash_digest, k, sign.c);
-  OPENSSL_cleanse(&sha_ctx, sizeof(sha_ctx));
+  
 
   // printf("Hash = (r1, r2, r3, r4, d1, d2, d3, d4) = (%s, %s, %s, %s, %s, %s, %s, %s)\n", printer(hash.r1), printer(hash.r2), printer(hash.r3), printer(hash.r4), printer(hash.d1), printer(hash.d2), printer(hash.d3) ,printer(hash.d4))
 
-
-  // // Compute s1
+  // Compute s1
   BN_add(bn_val, one, one); // 1+1
   BN_set_word(bn_val2, gamma_1); // gamma1 to BIGNUM 
   BN_exp(bn_val1, bn_val, bn_val2, ctx); // 2^gamma1
@@ -150,7 +158,6 @@ struct sign_struct sign(struct y_struct y, struct membership_struct membership)
   BN_sub(bn_val, membership.e, bn_val1); // e - 2^gamma1  
   BN_mul(bn_val1, sign.c, bn_val, ctx); // c(e - 2^gamma1)
   BN_sub(sign.s1, hash.r1, bn_val1); // r1 - c(e - 2^gamma1)
-
   BN_clear(bn_val);
   BN_clear(bn_val1);
   BN_clear(bn_val2);
@@ -175,10 +182,11 @@ struct sign_struct sign(struct y_struct y, struct membership_struct membership)
   // Compute s4
   BN_mul(bn_val, sign.c, w, ctx); // cw
   BN_sub(sign.s4, hash.r4, bn_val); // r4 - cw
-  
-  printf("r1=%s\nr2=%s\nr3=%s\nr4=%s\n", printer(hash.r1), printer(hash.r2), printer(hash.r3), printer(hash.r4));
-  printf("sig = (c, s1, s2, s3, s4, T1, t2, T3) = (%s, %s, %s, %s, %s, %s, %s, %s) \n", printer(sign.c), printer(sign.s1), printer(sign.s2), printer(sign.s3), printer(sign.s4), printer(sign.T1), printer(sign.T2), printer(sign.T3));
 
+  printf("sig = (c, s1, s2, s3, s4, T1, t2, T3) = (%s, %s, %s, %s, %s, %s, %s, %s) \n", printer(sign.c), printer(sign.s1), printer(sign.s2), printer(sign.s3), printer(sign.s4), printer(sign.T1), printer(sign.T2), printer(sign.T3));
+  printf("r1= %s\nr2= %s\nr3= %s\nr4= %s\n", printer(hash.r1), printer(hash.r2), printer(hash.r3), printer(hash.r4));
   printf("Member \t\td1 = %s\n\t\td2 = %s\n\t\td3 = %s\n\t\td4 = %s\n", printer(hash.d1), printer(hash.d2), printer(hash.d3), printer(hash.d4));
+  
   return sign;
 }
+
