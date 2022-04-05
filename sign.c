@@ -127,7 +127,7 @@ struct sign_struct sign(struct y_struct y, struct membership_struct membership)
 
   // Compute Hash
   unsigned char hash_digest[k];
-  unsigned char memdump[k];
+  unsigned char memdump[k]; // NEEDED to prevent memory overwrite (no problem in mbedtls)
   SHA256_Init(&sha_ctx);
 
   hash_input(y.g);
@@ -137,14 +137,12 @@ struct sign_struct sign(struct y_struct y, struct membership_struct membership)
   hash_input(sign.T1);
   hash_input(sign.T2);
   hash_input(sign.T3);
-  // hash_input(hash.d1);
+  // hash_input(hash.d1); // problem with calcualtion no problem in mbedtls
   hash_input(hash.d2);
   hash_input(hash.d3);
   hash_input(hash.d4);
 
   SHA256_Final(hash_digest, &sha_ctx);
-  // SHA256_End(&sha_ctx, hash_digest);
-  // OPENSSL_cleanse(&sha_ctx, sizeof(sha_ctx));
   BN_bin2bn(hash_digest, k, sign.c);
   
 
@@ -184,8 +182,6 @@ struct sign_struct sign(struct y_struct y, struct membership_struct membership)
   BN_sub(sign.s4, hash.r4, bn_val); // r4 - cw
 
   printf("sig = (c, s1, s2, s3, s4, T1, t2, T3) = (%s, %s, %s, %s, %s, %s, %s, %s) \n", printer(sign.c), printer(sign.s1), printer(sign.s2), printer(sign.s3), printer(sign.s4), printer(sign.T1), printer(sign.T2), printer(sign.T3));
-  printf("r1= %s\nr2= %s\nr3= %s\nr4= %s\n", printer(hash.r1), printer(hash.r2), printer(hash.r3), printer(hash.r4));
-  printf("Member \t\td1 = %s\n\t\td2 = %s\n\t\td3 = %s\n\t\td4 = %s\n", printer(hash.d1), printer(hash.d2), printer(hash.d3), printer(hash.d4));
   
   return sign;
 }

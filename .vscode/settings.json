@@ -4,6 +4,9 @@
     "public.h": "c",
     "crypto.h": "c",
     "err.h": "c",
-    "ec.h": "c"
+    "ec.h": "c",
+    "bignum.h": "c",
+    "private_access.h": "c",
+    "sha256.h": "c"
   }
 }

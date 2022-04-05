@@ -145,15 +145,13 @@ void verify(struct y_struct y, struct sign_struct sign)
   hash_verify(sign.T1);
   hash_verify(sign.T2);
   hash_verify(sign.T3);
-  // hash_verify(d1);
+  // hash_verify(d1); // not added to problem with calculation in openssl no problem in mbedtls
   hash_verify(d2);
   hash_verify(d3);
   hash_verify(d4);
 
   SHA256_Final(hash_compare, &hash_ctx);
   BN_bin2bn(hash_compare, k, c_check);
-
-  printf("Verifier \td1 = %s\n\t\td2 = %s\n\t\td3 = %s\n\t\td4 = %s\n", printer(d1), printer(d2), printer(d3), printer(d4));
 
   // Compare hashes
   if(BN_ucmp(sign.c, c_check))

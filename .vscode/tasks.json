@@ -9,6 +9,10 @@
 				"-fdiagnostics-color=always",
 				// "-I/usr/local/opt/openssl/include",
 				// "-L/usr/local/opt/openssl/lib",
+				// "-I/usr/local/opt/openssl/include",
+				// "-I/usr/local/opt/"mbedtls\-3\.1\.0/include/mbedtls",
+				// "-L/C:/msys64/mingw64/include/mbedtls-3.1.0/include",
+				// "-I/C:/msys64/mingw64/include/mbedtls-3.1.0/include",
 				"-g",
 				// "${file}",
 				"${workspaceFolder}\\main.c",
@@ -20,7 +24,8 @@
 				"-o",
 				"${workspaceFolder}\\run.exe",
 				// "-lssl",
-				"-lcrypto "
+				"-lcrypto",
+				// "-lmbedtls -lmbedx509 -lmbedcrypto"
 			],
 			"options": {
 				"cwd": "${fileDirname}"

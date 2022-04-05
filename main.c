@@ -6,14 +6,16 @@
 #include <sys/types.h>
 #include <stdbool.h>
 #include <time.h>
-
+#include "mbedtls-3.1.0/include/mbedtls/private_access.h"
+#include <mbedtls-3.1.0/include/mbedtls/sha256.h>
+// #include "mbedtls-3.1.0/include/mbedtls/config.h"
 #include "public.h"
 
 void main()
 {
   struct y_struct y;
   struct membership_struct membership;
-  struct sign_struct signature;
+  struct sign_struct signature ;
   
   membership =  init_membership();
   signature = init_sign();
