@@ -1,6 +1,8 @@
 /*
- *  Simple group signature demonstration program
+ * Simple group signature demonstration program
  *
+ * This program call the group signature functions and demonstrates its use
+ * 
  */
 
 #include "mbedtls/build_info.h"
@@ -23,7 +25,7 @@
 #endif
 
 #if !defined(MBEDTLS_BIGNUM_C) || !defined(MBEDTLS_FS_IO) || \
-    !defined(MBEDTLS_CTR_DRBG_C) || !defined(MBEDTLS_GENPRIME) || defined(MBEDTLS_ENTROPY_C)
+    !defined(MBEDTLS_CTR_DRBG_C) || !defined(MBEDTLS_GENPRIME) ||!defined(MBEDTLS_ENTROPY_C)
 int main( void )
 {
     mbedtls_printf("MBEDTLS_BIGNUM_C and/or "
@@ -41,12 +43,17 @@ int main( void )
 #include <string.h>
 #include <stdio.h>
 
+#include "shared.h"
 
 int main( void )
 {
-  int ret = 1;
   int exit_code = MBEDTLS_EXIT_FAILURE;
-  mbedtls_printf("TEST");
+  struct pk_struct pk;
+  mbedtls_mpi_init( &pk.n ); mbedtls_mpi_init( &pk.a ); mbedtls_mpi_init( &pk.a0 );
+  mbedtls_mpi_init( &pk.y ); mbedtls_mpi_init( &pk.g ); mbedtls_mpi_init( &pk.h );
+
+  pk = manager_setup();
+
 
   exit_code = MBEDTLS_EXIT_SUCCESS;
 
