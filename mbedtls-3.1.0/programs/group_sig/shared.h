@@ -12,5 +12,6 @@
   };
 
   struct pk_struct manager_setup();
+  void print_pk_to_file( struct pk_struct pk );
 
 #endif // SHARED_H

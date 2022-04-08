@@ -75,7 +75,7 @@ struct pk_struct manager_setup()
   mbedtls_printf( "ok. Introduce variables for entropy, please wait...\n" );
   fflush( stdout );
   mbedtls_entropy_context entropy;
-  // mbedtls_entropy_init( &entropy );
+  mbedtls_entropy_init( &entropy );
 
   // FIXME: Generate primes instead of hardcoding an example
   // Select random secret lp-bit primes p',q' such that p =2p' + 1 and q = 2q' + 1 are prime. 
@@ -106,23 +106,22 @@ struct pk_struct manager_setup()
   mbedtls_mpi_mul_mpi( &mpi_val, &sk.p, &sk.q ); // p'q'
   
   // Seed drbg
-  // mbedtls_printf( "ok. Seed drbg, please wait...\n" );
-  // fflush( stdout );
-  // ret = mbedtls_ctr_drbg_seed( &ctr_drbg, mbedtls_entropy_func, &entropy, (const unsigned char *) personalization, strlen( personalization ) );
-  // if( ret != 0 )
-  // {
-  //   mbedtls_printf("ERROR. mbedtls_ctr_drbg_seed got ret = %d\n", ret);
-  // }
+  mbedtls_printf( "ok. Seed drbg, please wait...\n" );
+  fflush( stdout );
+  ret = mbedtls_ctr_drbg_seed( &ctr_drbg, mbedtls_entropy_func, &entropy, (const unsigned char *) personalization, strlen( personalization ) );
+  if( ret != 0 )
+  {
+    mbedtls_printf("ERROR. mbedtls_ctr_drbg_seed got ret = %d\n", ret);
+  }
 
-  // // Use seeded drbg to get x ∈ Z/p'q' variable FIXME: set correct range
-  // mbedtls_printf( "ok. Use seeded drbg to get x ∈ Z/p'q', please wait...\n" );
-  // fflush( stdout );
-  // ret = mbedtls_mpi_fill_random( &sk.x, 2, mbedtls_ctr_drbg_random, &ctr_drbg );
-  // if( ret != 0 )
-  // {
-  //   mbedtls_printf("ERROR. mbedtls_mpi_fill_random got ret = %d\n", ret);
-  // }
-  // mbedtls_mpi_write_file("sk.x = ", &sk.x, 10, NULL);
+  // Use seeded drbg to get x ∈ Z/p'q' variable FIXME: set correct range
+  mbedtls_printf( "ok. Use seeded drbg to get x in Z/p'q', please wait...\n" );
+  fflush( stdout );
+  ret = mbedtls_mpi_fill_random( &sk.x, 2, mbedtls_ctr_drbg_random, &ctr_drbg );
+  if( ret != 0 )
+  {
+    mbedtls_printf("ERROR. mbedtls_mpi_fill_random got ret = %d\n", ret);
+  }
 
   // Calculate y = g^x mod n
   mbedtls_printf( "ok. Calculate y = g^x mod n, please wait...\n" );
@@ -131,11 +130,10 @@ struct pk_struct manager_setup()
   
   exit_code = MBEDTLS_EXIT_SUCCESS;
 
-cleanup:
   mbedtls_printf( "ok. Clean up and return, please wait...\n" );
   fflush( stdout );
   mbedtls_mpi_free( &p ); mbedtls_mpi_free( &q ); mbedtls_mpi_free( &mpi_val ); mbedtls_mpi_free( &mpi_val1 );
-  // mbedtls_entropy_free( &entropy );
+  mbedtls_entropy_free( &entropy );
   mbedtls_ctr_drbg_free( &ctr_drbg );
   
   if( exit_code != MBEDTLS_EXIT_SUCCESS )
@@ -143,7 +141,7 @@ cleanup:
       mbedtls_printf( "\nAn error occurred.\n" );
   }
 
-  mbedtls_exit( exit_code );
+  mbedtls_printf("return\n");
   return pk;
 }
 
@@ -159,7 +157,7 @@ mbedtls_mpi select_order( mbedtls_mpi n )
   {
     while( abs(mbedtls_mpi_cmp_int( &gcd, 1 )) )
     {
-       // select random x ∈ QR(n) FIXME: select random instead of hardcoding
+      // select random x ∈ QR(n) FIXME: select random instead of hardcoding
       mbedtls_mpi_read_string( &x, 10, "11" ); // temp fix for x
       mbedtls_mpi_gcd( &gcd, &x, &n ); // check gcd( x, n )
     }

@@ -53,12 +53,9 @@ int main( void )
   mbedtls_mpi_init( &pk.y ); mbedtls_mpi_init( &pk.g ); mbedtls_mpi_init( &pk.h );
 
   pk = manager_setup();
-
+  print_pk_to_file( pk );
 
   exit_code = MBEDTLS_EXIT_SUCCESS;
-
-cleanup:
-    
 
   if( exit_code != MBEDTLS_EXIT_SUCCESS )
   {
@@ -67,4 +64,21 @@ cleanup:
 
   mbedtls_exit( exit_code );
 }
+
+void print_pk_to_file( struct pk_struct pk )
+{
+  FILE *fout;
+  if( ( fout = fopen( "group_sig/result.txt", "w" ) ) == NULL )
+  {
+    mbedtls_printf( " failed.  Could not create result.txt\n" );
+  }
+  mbedtls_mpi_write_file( "pk.n = ", &pk.n, 10, fout );
+  mbedtls_mpi_write_file( "pk.a = ", &pk.a, 10, fout );
+  mbedtls_mpi_write_file( "pk.a0 = ", &pk.a0, 10, fout );
+  mbedtls_mpi_write_file( "pk.y = ", &pk.y, 10, fout );
+  mbedtls_mpi_write_file( "pk.g = ", &pk.g, 10, fout );
+  mbedtls_mpi_write_file( "pk.h = ", &pk.h, 10, fout );
+  fclose( fout );
+}
+
 #endif /* MBEDTLS_BIGNUM_C && MBEDTLS_FS_IO */
