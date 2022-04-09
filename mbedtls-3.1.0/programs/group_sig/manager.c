@@ -38,6 +38,7 @@ int main( void )
 #include "mbedtls/ctr_drbg.h"
 #include "mbedtls/entropy.h"
 
+#include <stdbool.h>
 #include <string.h>
 #include <stdio.h>
 
@@ -47,6 +48,8 @@ int main( void )
 struct pk_struct manager_setup()
 {
   int exit_code = MBEDTLS_EXIT_FAILURE;
+  mbedtls_printf( "####### KEY SETUP ####### \n" );
+  fflush( stdout );
 
   // Intilize keys
   mbedtls_printf( "ok. Intilize keys, please wait...\n" );
@@ -141,7 +144,6 @@ struct pk_struct manager_setup()
       mbedtls_printf( "\nAn error occurred.\n" );
   }
 
-  mbedtls_printf("return\n");
   return pk;
 }
 
@@ -173,6 +175,138 @@ mbedtls_mpi select_order( mbedtls_mpi n )
   mbedtls_mpi_free( &mpi_1 ); mbedtls_mpi_free( &mpi_2);
   mbedtls_mpi_free( &gcd );   mbedtls_mpi_free( &gcd1 );
   return x;
+}
+
+struct manager_info_struct manager_join(mbedtls_mpi x, mbedtls_mpi n, int z, mbedtls_mpi a0)
+{
+  mbedtls_printf( "\n\n####### JOIN MANAGER PART %d ####### \n", z - 1  );
+  fflush( stdout );
+
+  // Initilize certificate
+  mbedtls_printf( "ok. Intilize manager info, please wait...\n" );
+  fflush( stdout );
+  struct manager_info_struct info;
+  mbedtls_mpi_init( &info.a ); mbedtls_mpi_init( &info.b );
+
+  // Initilize and introduce temperoral variables
+  mbedtls_printf( "ok. Initilize and introduce temperoral variables, please wait...\n" );
+  fflush( stdout );
+  int ret;
+  mbedtls_mpi mpi_val, mpi_val1;
+  mbedtls_mpi_init( &mpi_val ); mbedtls_mpi_init( &mpi_val1 );
+    
+  // Introduce variables for drbg
+  mbedtls_printf( "ok. Introduce variables for drbg, please wait...\n" );
+  fflush( stdout );
+  mbedtls_ctr_drbg_context ctr_drbg;
+  mbedtls_ctr_drbg_init( &ctr_drbg );
+  char personalization[] = "my_app_specific_string";
+
+  // Introduce variables for entropy
+  mbedtls_printf( "ok. Introduce variables for entropy, please wait...\n" );
+  fflush( stdout );
+  mbedtls_entropy_context entropy;
+  mbedtls_entropy_init( &entropy );
+
+  if( z )
+  {
+    // Calculate range x ∈ 2^λ2
+    mbedtls_printf( "ok. Calculate range for alpha and beta (2^lambda_2), please wait...\n" );
+    fflush( stdout );
+    int range = 1;
+    range = range << (lambda_2 - 3 );
+    mbedtls_printf("range=%d 1<<%d-2\n", range, lambda_2);
+    char range_char = range + '0';
+    const char *ptr = &range_char;
+    mbedtls_mpi_read_string( &mpi_val, 10, ptr); // Set range as mpi
+    
+    // Seed drbg
+    mbedtls_printf( "ok. Seed drbg, please wait...\n" );
+    fflush( stdout );
+    ret = mbedtls_ctr_drbg_seed( &ctr_drbg, mbedtls_entropy_func, &entropy, (const unsigned char *) personalization, strlen( personalization ) );
+    if( ret != 0 )
+    {
+      mbedtls_printf("ERROR. mbedtls_ctr_drbg_seed got ret = %d\n", ret);
+    }
+
+    // Use seeded drbg to generate a secret exponent alpha ∈  ]0, 2^λ2[
+      // FIXME: fix range
+    mbedtls_printf( "ok. Use seeded drbg to generate a secret exponent x in  ]0, 2^lambda_2[, please wait...\n" );
+    fflush( stdout );
+    ret = mbedtls_mpi_fill_random( &info.a, 10, mbedtls_ctr_drbg_random, &ctr_drbg );
+    if( ret != 0 )
+    {
+      mbedtls_printf("ERROR. mbedtls_mpi_fill_random got ret = %d\n", ret);
+    }
+
+    // Use seeded drbg to generate a secret exponent beta ∈  ]0, 2^λ2[
+    mbedtls_printf( "ok. Use seeded drbg to generate a secret exponent x in  ]0, 2^lambda_2[, please wait...\n" );
+    fflush( stdout );
+    ret = mbedtls_mpi_fill_random( &info.b, 5, mbedtls_ctr_drbg_random, &ctr_drbg );
+    if( ret != 0 )
+    {
+      mbedtls_printf("ERROR. mbedtls_mpi_fill_random got ret = %d\n", ret);
+    }
+
+    mbedtls_printf( "ok. Clean up and return, please wait...\n" );
+    fflush( stdout );
+    mbedtls_mpi_free( &mpi_val );     mbedtls_mpi_free( &mpi_val1 );
+    mbedtls_entropy_free( &entropy ); mbedtls_ctr_drbg_free( &ctr_drbg );
+
+    // Return vulues to member
+    mbedtls_printf( "ok. Return values to member , please wait...\n" );
+    fflush( stdout );
+    return info;
+  }
+  else
+  {
+    // Select random prime in range of Gamma
+    mbedtls_printf( "ok. Select random prime in range of Gamma, please wait...\n" );
+    fflush( stdout );
+    int range = (2^(gamma_1)) + (2^(gamma_2)); // range Γ = ]2^gamma_1 - 2^gamma_2, 2^gamma_1 + 2^gamma_2[
+
+    // Seed drbg
+    mbedtls_printf( "ok. Seed drbg, please wait...\n" );
+    fflush( stdout );
+    ret = mbedtls_ctr_drbg_seed( &ctr_drbg, mbedtls_entropy_func, &entropy, (const unsigned char *) personalization, strlen( personalization ) );
+    if( ret != 0 )
+    {
+      mbedtls_printf("ERROR. mbedtls_ctr_drbg_seed got ret = %d\n", ret);
+    }
+
+    // Use seeded drbg to generate a secret exponent alpha ∈  ]0, 2^λ2[
+    mbedtls_printf( "ok. Use seeded drbg to get ei, please wait...\n" );
+    fflush( stdout );
+    ret = mbedtls_mpi_fill_random( &info.a, 5, mbedtls_ctr_drbg_random, &ctr_drbg );
+    if( ret != 0 )
+    {
+      mbedtls_printf("ERROR. mbedtls_mpi_fill_random got ret = %d\n", ret);
+    }
+
+    // Compute Ai = (C2a0)^1/ei mod n
+    mbedtls_printf( "ok. Compute Ai, please wait...\n" );
+    fflush( stdout );
+     mbedtls_mpi_inv_mod( &info.b, &a0, &n ); 
+    mbedtls_mpi_write_file( " inv a0 = ", &a0, 10, NULL);
+
+    mbedtls_mpi_mul_mpi( &mpi_val, &a0, &x ); // C2*a0 
+    mbedtls_mpi_mod_mpi( &mpi_val, &mpi_val, &n ); // C2*a0 mod n
+    mbedtls_mpi_inv_mod( &info.b, &mpi_val, &n ); // inv C2*a0 mod n
+    // mbedtls_mpi_inv_mod( &info.b, &x, &n );
+    mbedtls_mpi_write_file( " inv c2 = ", &info.b, 10, NULL);
+
+    mbedtls_printf( "ok. Clean up and return, please wait...\n" );
+    fflush( stdout );
+    mbedtls_mpi_free( &mpi_val );     mbedtls_mpi_free( &mpi_val1 );
+    mbedtls_entropy_free( &entropy ); mbedtls_ctr_drbg_free( &ctr_drbg );
+
+    // Return vulues to member
+    mbedtls_printf( "ok. Return values to member , please wait...\n" );
+    fflush( stdout );
+    return info;
+  }
+
+  return info;
 }
 
 #endif /* MBEDTLS_BIGNUM_C && MBEDTLS_FS_IO */

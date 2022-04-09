@@ -42,6 +42,7 @@ int main( void )
 
 #include <string.h>
 #include <stdio.h>
+#include <stdbool.h>
 
 #include "shared.h"
 
@@ -49,11 +50,15 @@ int main( void )
 {
   int exit_code = MBEDTLS_EXIT_FAILURE;
   struct pk_struct pk;
+  struct cert_struct cert; 
   mbedtls_mpi_init( &pk.n ); mbedtls_mpi_init( &pk.a ); mbedtls_mpi_init( &pk.a0 );
   mbedtls_mpi_init( &pk.y ); mbedtls_mpi_init( &pk.g ); mbedtls_mpi_init( &pk.h );
+  mbedtls_mpi_init( &cert.A ); mbedtls_mpi_init( &cert.e ); mbedtls_mpi_init( &cert.x );
 
   pk = manager_setup();
   print_pk_to_file( pk );
+  cert = member_join( pk );
+  // print_cert_to_file( cert );
 
   exit_code = MBEDTLS_EXIT_SUCCESS;
 
@@ -65,10 +70,23 @@ int main( void )
   mbedtls_exit( exit_code );
 }
 
+void print_cert_to_file( struct cert_struct cert)
+{
+  FILE *fout;
+  if( ( fout = fopen( "group_sig/cert.txt", "w" ) ) == NULL )
+  {
+    mbedtls_printf( " failed.  Could not create result.txt\n" );
+  }
+  mbedtls_mpi_write_file( "cert.A = ", &cert.A, 10, fout );
+  mbedtls_mpi_write_file( "cert.e = ", &cert.e, 10, fout );
+  mbedtls_mpi_write_file( "cert.x = ", &cert.x, 10, fout );
+
+}
+
 void print_pk_to_file( struct pk_struct pk )
 {
   FILE *fout;
-  if( ( fout = fopen( "group_sig/result.txt", "w" ) ) == NULL )
+  if( ( fout = fopen( "group_sig/pk.txt", "w" ) ) == NULL )
   {
     mbedtls_printf( " failed.  Could not create result.txt\n" );
   }
