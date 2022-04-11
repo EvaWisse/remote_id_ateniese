@@ -215,7 +215,6 @@ struct manager_info_struct manager_join(mbedtls_mpi x, mbedtls_mpi n, int z, mbe
     fflush( stdout );
     int range = 1;
     range = range << (lambda_2 - 3 );
-    mbedtls_printf("range=%d 1<<%d-2\n", range, lambda_2);
     char range_char = range + '0';
     const char *ptr = &range_char;
     mbedtls_mpi_read_string( &mpi_val, 10, ptr); // Set range as mpi
@@ -263,7 +262,7 @@ struct manager_info_struct manager_join(mbedtls_mpi x, mbedtls_mpi n, int z, mbe
     // Select random prime in range of Gamma
     mbedtls_printf( "ok. Select random prime in range of Gamma, please wait...\n" );
     fflush( stdout );
-    int range = (2^(gamma_1)) + (2^(gamma_2)); // range Γ = ]2^gamma_1 - 2^gamma_2, 2^gamma_1 + 2^gamma_2[
+    // int range = (2^(gamma_1)) + (2^(gamma_2)); // range Γ = ]2^gamma_1 - 2^gamma_2, 2^gamma_1 + 2^gamma_2[
 
     // Seed drbg
     mbedtls_printf( "ok. Seed drbg, please wait...\n" );
@@ -277,7 +276,7 @@ struct manager_info_struct manager_join(mbedtls_mpi x, mbedtls_mpi n, int z, mbe
     // Use seeded drbg to generate a secret exponent alpha ∈  ]0, 2^λ2[
     mbedtls_printf( "ok. Use seeded drbg to get ei, please wait...\n" );
     fflush( stdout );
-    ret = mbedtls_mpi_fill_random( &info.a, 5, mbedtls_ctr_drbg_random, &ctr_drbg );
+    ret = mbedtls_mpi_fill_random( &info.a, 5, mbedtls_ctr_drbg_random, &ctr_drbg ); //FIXME: use correct lenght
     if( ret != 0 )
     {
       mbedtls_printf("ERROR. mbedtls_mpi_fill_random got ret = %d\n", ret);
@@ -308,5 +307,36 @@ struct manager_info_struct manager_join(mbedtls_mpi x, mbedtls_mpi n, int z, mbe
 
   return info;
 }
+
+// void open( struct pk_struct pk, struct sign_stuct sign, struct cert_struct cert )
+// {
+//   mbedtls_printf( "\n\n####### MANAGER OPEN ####### \n" );
+//   fflush( stdout );
+//   if( verify( pk, sign ) )
+//   {
+//     // Initilize and introduce temperoral variables
+//     mbedtls_printf( "ok. Initilize and introduce temperoral variables, please wait...\n" );
+//     fflush( stdout );
+//     mbedtls_mpi A, mpi_val;
+//     mbedtls_mpi_init( &A ); mbedtls_mpi_init( &mpi_val );
+
+//     // Calculate Ai 
+//     mbedtls_printf( "ok. Caluclate Ai, please wait...\n" );
+//     fflush( stdout );
+//     mbedtls_mpi_exp_mod( &mpi_val, &sign.T2, &cert.x, &pk.n, NULL); // T2^c mod n 
+//     mbedtls_mpi_inv_mod( &mpi_val, &mpi_val, &pk.n ); // inv T2^x mod n 
+//     mbedtls_mpi_mul_mpi( &A, &mpi_val, &sign.T1 ); // T1/T2^x
+//     mbedtls_mpi_mod_mpi( &A, &A, &pk.n ); //  T1/T2^x mod n 
+
+//     // See whether Ai matches the certificate value
+//     mbedtls_printf( "ok. Check whether A matches the certificate value, please wait...\n" );
+//     fflush( stdout );
+//   }
+//   else 
+//   {
+//     mbedtls_printf( "ok. Signature can not be verified , please wait...\n" );
+//     fflush( stdout );
+//   }
+// }
 
 #endif /* MBEDTLS_BIGNUM_C && MBEDTLS_FS_IO */

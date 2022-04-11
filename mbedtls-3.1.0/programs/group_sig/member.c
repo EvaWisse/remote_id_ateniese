@@ -43,6 +43,7 @@ int main( void )
 #include <string.h>
 #include <stdio.h>
 #include <stdbool.h>
+#include <math.h>
 
 #include "shared.h"
 
@@ -86,7 +87,7 @@ struct cert_struct member_join( struct pk_struct pk )
   fflush( stdout );
   int range = 1;
   range = range << (lambda_2 -2);
-  mbedtls_printf( " rang = %d, lambda_2 %d\n", range, lambda_2);
+  // mbedtls_printf( " rang = %d, lambda_2 %d\n", range, lambda_2);
   char range_char = range + '0';
   const char *ptr = &range_char;
   mbedtls_mpi_read_string( &mpi_range, 10, ptr ); // Set range as mpi
@@ -189,5 +190,278 @@ struct cert_struct member_join( struct pk_struct pk )
   return cert;
 }
 
+struct sign_struct gen_sign( struct pk_struct pk, struct cert_struct cert )
+{
+  mbedtls_printf( "\n\n####### SIGN MEMBER PART ####### \n");
+  fflush( stdout );
+
+  // Initilize signature
+  mbedtls_printf( "ok. Intilize signature, please wait...\n" );
+  fflush( stdout );
+  struct sign_struct sign; 
+  mbedtls_mpi_init( &sign.c );  mbedtls_mpi_init( &sign.s1 ); mbedtls_mpi_init( &sign.s2 );
+  mbedtls_mpi_init( &sign.s3 ); mbedtls_mpi_init( &sign.s4 ); mbedtls_mpi_init( &sign.T1 );
+  mbedtls_mpi_init( &sign.T2 ); mbedtls_mpi_init( &sign.T3 );
+ 
+  // Initilize and introduce temperoral variables
+  mbedtls_printf( "ok. Initilize and introduce temperoral variables, please wait...\n" );
+  fflush( stdout );
+  int ret = 1; 
+  mbedtls_mpi mpi_val, mpi_val1, mpi_val2, w, r1, r2, r3, r4, d1, d2, d3, d4;
+  mbedtls_mpi_init( &mpi_val ); mbedtls_mpi_init( &mpi_val1 );  mbedtls_mpi_init( &mpi_val2 );  mbedtls_mpi_init( &w );
+  mbedtls_mpi_init( &r1 );      mbedtls_mpi_init( &r2 );        mbedtls_mpi_init( &r3 );        mbedtls_mpi_init( &r4 );
+  mbedtls_mpi_init( &d1 );      mbedtls_mpi_init( &d2 );        mbedtls_mpi_init( &d3 );        mbedtls_mpi_init( &d4 );
+
+  // Introduce variables for drbg
+  mbedtls_printf( "ok. Introduce variables for drbg, please wait...\n" );
+  fflush( stdout );
+  mbedtls_ctr_drbg_context ctr_drbg;
+  mbedtls_ctr_drbg_init( &ctr_drbg );
+  char personalization[] = "my_app_specific_string";
+
+  // Introduce variables for entropy
+  mbedtls_printf( "ok. Introduce variables for entropy, please wait...\n" );
+  fflush( stdout );
+  mbedtls_entropy_context entropy;
+  mbedtls_entropy_init( &entropy );
+
+  // Seed drbg
+  mbedtls_printf( "ok. Seed drbg, please wait...\n" );
+  fflush( stdout );
+  ret = mbedtls_ctr_drbg_seed( &ctr_drbg, mbedtls_entropy_func, &entropy, (const unsigned char *) personalization, strlen( personalization ) );
+  if( ret != 0 )
+  {
+    mbedtls_printf("ERROR. mbedtls_ctr_drbg_seed got ret = %d\n", ret);
+  }
+
+  // Use seeded drbg to generate a secret exponent w of lenght 2lp
+  mbedtls_printf( "ok. Use seeded drbg to generate a secret exponent w of lenght 2lp, please wait...\n" );
+  fflush( stdout );
+  int range_ceil = ceil((2*lp>>3));
+  ret = mbedtls_mpi_fill_random( &w, range_ceil, mbedtls_ctr_drbg_random, &ctr_drbg );
+  if( ret != 0 )
+  {
+    mbedtls_printf("ERROR. mbedtls_mpi_fill_random got ret = %d\n", ret);
+  }
+
+  // Calculate T1
+  mbedtls_printf( "ok. Calculate T1, please wait...\n" );
+  fflush( stdout );
+  mbedtls_mpi_exp_mod( &mpi_val, &pk.y, &w, &pk.n, NULL ); // y^w mod n
+  mbedtls_mpi_mul_mpi( &mpi_val1, &mpi_val, &cert.A ); // A * y^w 
+  mbedtls_mpi_mod_mpi( &sign.T1, &mpi_val1, &pk.n ); // A * y^w mod n
+
+  // Calculate T2
+  mbedtls_printf( "ok. Calculate T2, please wait...\n" );
+  fflush( stdout );
+  mbedtls_mpi_exp_mod( &sign.T2, &pk.g, &w, &pk.n, NULL); // g^w mod n
+
+  // Calculate T3
+  mbedtls_printf( "ok. Calculate T3, please wait...\n" );
+  fflush( stdout );
+  mbedtls_mpi_exp_mod( &mpi_val, &pk.g, &cert.e, &pk.n, NULL ); // g^e mod n
+  mbedtls_mpi_exp_mod( &mpi_val1, &pk.h, &w, &pk.n, NULL ); // h^w mod n
+  mbedtls_mpi_mul_mpi( &sign.T3, &mpi_val, &mpi_val1 ); // h^w * g^e
+  mbedtls_mpi_mod_mpi( &sign.T3, &sign.T3, &pk.n ); // h^w * g^e mod n
+
+  // Choose r1
+  mbedtls_printf( "ok. Use seeded drbg to generate r1, please wait...\n" );
+  fflush( stdout );
+  range_ceil = ceil(( epsilon * ( gamma_2 + k )) >> 3);
+  ret = mbedtls_mpi_fill_random( &r1, range_ceil , mbedtls_ctr_drbg_random, &ctr_drbg );
+  if( ret != 0 )
+  {
+    mbedtls_printf("ERROR. mbedtls_mpi_fill_random got ret = %d\n", ret);
+  }
+   
+  // Choose r2
+   mbedtls_printf( "ok. Use seeded drbg to generate r2, please wait...\n" );
+  fflush( stdout );
+  range_ceil = ceil(( epsilon * ( lambda_2 + k )) >> 3);
+  ret = mbedtls_mpi_fill_random( &r2, range_ceil , mbedtls_ctr_drbg_random, &ctr_drbg );
+  if( ret != 0 )
+  {
+    mbedtls_printf("ERROR. mbedtls_mpi_fill_random got ret = %d\n", ret);
+  }
+
+  // Choose r3
+  mbedtls_printf( "ok. Use seeded drbg to generate r3, please wait...\n" );
+  fflush( stdout );
+  range_ceil = ceil(( epsilon * ( gamma_1 + 2 * lp + k + 1 )) >>3 );
+  ret = mbedtls_mpi_fill_random( &r3, range_ceil , mbedtls_ctr_drbg_random, &ctr_drbg );
+  if( ret != 0 )
+  {
+    mbedtls_printf("ERROR. mbedtls_mpi_fill_random got ret = %d\n", ret);
+  }
+  
+  // Choose r4
+  mbedtls_printf( "ok. Use seeded drbg to generate r4, please wait...\n" );
+  fflush( stdout );
+  range_ceil = ceil((epsilon * ( 2 * lp + k )) >> 3);
+  ret = mbedtls_mpi_fill_random( &r4, range_ceil , mbedtls_ctr_drbg_random, &ctr_drbg );
+  if( ret != 0 )
+  {
+    mbedtls_printf("ERROR. mbedtls_mpi_fill_random got ret = %d\n", ret);
+  }
+
+  // Compute d1  = T1^r1/(a^r2y^r3)
+  mbedtls_printf( "ok. Calculate d1, please wait...\n" );
+  fflush( stdout );
+  mbedtls_mpi neg;
+  mbedtls_mpi_init( &neg );
+  mbedtls_mpi_sub_mpi( &neg, &r1, &r1 );
+  if( mbedtls_mpi_cmp_int( &neg, 0 ) != 0 ) 
+  {
+    mbedtls_mpi_inv_mod( &mpi_val, &sign.T1, &pk.n ); // inverse T1
+    mbedtls_mpi_exp_mod( &mpi_val1, &mpi_val, &r1, &pk.n, NULL ); // T1^r1 mod n FIXME: take abs
+  }
+  else 
+  {
+    mbedtls_mpi_exp_mod( &mpi_val1, &sign.T1, &r1, &pk.n, NULL ); // T1^r1 mod n 
+  }
+
+  mbedtls_mpi_sub_mpi( &neg, &r2, &r2 );
+  if( mbedtls_mpi_cmp_int( &neg, 0 ) != 0 )
+  {
+    mbedtls_mpi_exp_mod( &mpi_val, &pk.a, &r2, &pk.n, NULL ); // a^r2 mod n FIXME: take abs
+  }
+  else
+  {
+    mbedtls_mpi_inv_mod( &mpi_val2, &pk.a, &pk.n ); // inv a mod n
+    mbedtls_mpi_exp_mod( &mpi_val, &mpi_val2, &r2, &pk.n, NULL ); // a^r2
+  }
+  mbedtls_mpi_mul_mpi( &mpi_val2, &mpi_val1, &mpi_val ); // a^r2 * T1^r1
+  mbedtls_mpi_mod_mpi( &mpi_val2, &mpi_val2, &pk.n ); // a^r2 * T1^r1 mod n
+
+  mbedtls_mpi_sub_mpi( &neg, &r3, &r3 );
+  if( mbedtls_mpi_cmp_int( &neg, 0 ) != 0 )
+  {
+    mbedtls_mpi_exp_mod( &mpi_val1, &pk.y, &r3, &pk.n, NULL); // y^r3 mod n FIXME: take abs
+  }
+  else
+  {
+    mbedtls_mpi_inv_mod( &mpi_val, &pk.y, &pk.n ); // inv y mod n
+    mbedtls_mpi_exp_mod( &mpi_val1, &mpi_val, &r3, &pk.n, NULL ); // y^r3 mod n
+  }
+  mbedtls_mpi_mul_mpi( &d1, &mpi_val1, &mpi_val2 ); 
+  mbedtls_mpi_mod_mpi( &d1, &d1, &pk.n );
+
+  // Compute d2  T2^r1/g^r3
+  mbedtls_printf( "ok. Calculate d2, please wait...\n" );
+  fflush( stdout );
+  if( mbedtls_mpi_cmp_int( &neg, 0 ) != 0 ) 
+  {
+    mbedtls_mpi_exp_mod( &mpi_val, &pk.g, &r3, &pk.n, NULL ); // g^r3 mod n FIXME:take abs
+  }
+  else
+  {
+    mbedtls_mpi_inv_mod( &mpi_val1, &pk.g, &pk.n ); // inv g
+    mbedtls_mpi_exp_mod( &mpi_val, &mpi_val1, &r3, &pk.n, NULL ); // g^r3 FIXME:take abs
+  }
+
+  mbedtls_mpi_sub_mpi( &neg, &r1, &r1 );
+  if( mbedtls_mpi_cmp_int( &neg, 0 ) != 0 )
+  {
+    mbedtls_mpi_inv_mod( &mpi_val1, &sign.T2, &pk.n ); // inv T2
+    mbedtls_mpi_exp_mod( &d2, &mpi_val1, &r1, &pk.n, NULL ); // T2^r1 FIXME: take abs
+  }
+  else 
+  {
+    mbedtls_mpi_exp_mod( &mpi_val1, &sign.T2, &r1, &pk.n, NULL ); // T2^r1
+  }
+  mbedtls_mpi_mul_mpi( &d2, &mpi_val1, &mpi_val ); 
+  mbedtls_mpi_mod_mpi( &d2, &d2, &pk.n );
+  mbedtls_mpi_exp_mod( &mpi_val1, &sign.T2, &r1, &pk.n, NULL ); // T2^r1 
+  
+  
+  // Compute d3 = g^r4
+  mbedtls_printf( "ok. Calculate d3, please wait...\n" );
+  fflush( stdout );
+  mbedtls_mpi_sub_mpi( &neg, &r4, &r4 );
+  if( mbedtls_mpi_cmp_int( &neg, 0 ) != 0  )
+  {
+    mbedtls_mpi_inv_mod( &mpi_val, &pk.g, &pk.n); // inv g
+    mbedtls_mpi_exp_mod( &d3, &mpi_val, &r4, &pk.n, NULL ); // g^r4 mod n FIXME: take absolute
+  }
+  else
+  {
+    mbedtls_mpi_exp_mod( &d3, &pk.g, &r4, &pk.n, NULL ); // g^r4 mod n
+  }
+
+  // Compute d4  = g^r1 * h^r4
+  mbedtls_printf( "ok. Calculate d4, please wait...\n" );
+  fflush( stdout );
+  if( mbedtls_mpi_cmp_int( &neg, 0 ) != 0  )
+  {
+    mbedtls_mpi_inv_mod( &mpi_val, &pk.h, &pk.n); // inv h
+    mbedtls_mpi_exp_mod( &mpi_val1, &mpi_val, &r4, &pk.n, NULL ); // h^r4 mod n FIXME: take absolute
+  }
+  else
+  {
+    mbedtls_mpi_exp_mod( &mpi_val1, &pk.h, &r4, &pk.n, NULL ); // g^r4 mod n
+  }
+  
+  mbedtls_mpi_sub_mpi( &neg, &r1, &r1 );
+  if( mbedtls_mpi_cmp_int( &neg, 0 ) != 0  )
+  {
+    mbedtls_mpi_inv_mod( &mpi_val, &pk.g, &pk.n); // inv g
+    mbedtls_mpi_exp_mod( &mpi_val2, &mpi_val, &r1, &pk.n, NULL ); // g^r1 mod n FIXME: take absolute
+  }
+  else
+  {
+    mbedtls_mpi_exp_mod( &mpi_val2, &pk.g, &r1, &pk.n, NULL ); // g^r1 mod n
+  }
+  mbedtls_mpi_mul_mpi( &d4, &mpi_val1, &mpi_val2 ); // g^r1 * h^r4
+  mbedtls_mpi_mod_mpi( &d4, &d4, &pk.n ); // g^r1 * h^r4 mod n
+
+  // TODO: create signature
+
+  // s1 = r1 - c( e - 2^gamma_1 )
+  mbedtls_printf( "ok. Calculate r1, please wait...\n" );
+  fflush( stdout );
+  int temp = 1;
+  temp = temp << (gamma_1 - 3); // TODO: check wheteher we need to use bignum
+  char temp_char = temp + '0';
+  const char *ptr = &temp_char;
+  mbedtls_mpi_read_string( &mpi_val, 10, ptr ); // 2^gamma_1
+  mbedtls_mpi_sub_mpi( &mpi_val1, &cert.e, &mpi_val ); //  e - 2^gamma_1
+  mbedtls_mpi_mul_mpi( &mpi_val2, &mpi_val1, &sign.c ); // c * (e - gamma_1 )
+  mbedtls_mpi_sub_mpi( &sign.s1, &r1, &mpi_val2 ); // r1 - c * (e - gamma_1 )
+  
+  // s2 = r2 - c( x - 2^delta_1 )
+  mbedtls_printf( "ok. Calculate r2, please wait...\n" );
+  fflush( stdout ); 
+  temp = 1;
+  temp = temp << (lambda_1 - 3);
+  temp_char = temp + '0';
+  ptr = &temp_char;
+  mbedtls_mpi_read_string( &mpi_val, 10, ptr ); // 2^lambda_1
+  mbedtls_mpi_sub_mpi( &mpi_val1, &cert.x, &mpi_val ); //  x - 2^lambda_1
+  mbedtls_mpi_mul_mpi( &mpi_val2, &mpi_val1, &sign.c ); // c * ( x - 2^lambda_1 )
+  mbedtls_mpi_sub_mpi( &sign.s1, &r2, &mpi_val2 ); // r2 - c * ( x - 2^lambda_1 )
+
+  // s3 = r3 - c * e * w
+  mbedtls_printf( "ok. Calculate r3, please wait...\n" );
+  fflush( stdout );
+  mbedtls_mpi_mul_mpi( &mpi_val, &sign.c, &cert.e ); // c * e
+  mbedtls_mpi_mul_mpi( &mpi_val1, &mpi_val, &w); // w * c * e
+  mbedtls_mpi_sub_mpi( &sign.s3, &r3, &mpi_val1 ); // r3 - c * e * w
+
+  // s4 = r4 - c * w
+  mbedtls_printf( "ok. Calculate r4, please wait...\n" );
+  fflush( stdout );
+  mbedtls_mpi_mul_mpi( &mpi_val, &sign.c, &w); // c * w
+  mbedtls_mpi_sub_mpi( &sign.s4, &r4, &mpi_val ); // r4 -c * w
+
+  mbedtls_printf( "ok. Clean up and return, please wait...\n" );
+  fflush( stdout );
+  mbedtls_mpi_free( &mpi_val );     mbedtls_mpi_free( &mpi_val1 );      mbedtls_mpi_free( &mpi_val2 );
+  mbedtls_mpi_free( &w );           mbedtls_mpi_free( &r1 );            mbedtls_mpi_free( &r2 );          
+  mbedtls_mpi_free( &r3 );          mbedtls_mpi_free( &r4 );            mbedtls_mpi_free( &d1 );      
+  mbedtls_mpi_free( &d2 );          mbedtls_mpi_free( &d3 );            mbedtls_mpi_free( &d4 );
+  mbedtls_entropy_free( &entropy ); mbedtls_ctr_drbg_free( &ctr_drbg );
+
+ return sign;
+}
 
 #endif /* MBEDTLS_BIGNUM_C && MBEDTLS_FS_IO */

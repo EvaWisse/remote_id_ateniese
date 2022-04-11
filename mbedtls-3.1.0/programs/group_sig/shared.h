@@ -33,10 +33,23 @@
     mbedtls_mpi b; 
   };
 
+  struct sign_struct
+  {
+    mbedtls_mpi c;
+    mbedtls_mpi s1;
+    mbedtls_mpi s2;
+    mbedtls_mpi s3;
+    mbedtls_mpi s4;
+    mbedtls_mpi T1;
+    mbedtls_mpi T2;
+    mbedtls_mpi T3;
+  };
+
   struct pk_struct manager_setup();
   void print_pk_to_file( struct pk_struct pk );
   void print_cert_to_file( struct cert_struct cert );
   struct cert_struct member_join( struct pk_struct pk );
   struct manager_info_struct manager_join(mbedtls_mpi x, mbedtls_mpi n, int z, mbedtls_mpi a0);
-  struct sign_struct sign( struct pk_struct pk, struct cert_struct cert );
+  struct sign_struct gen_sign( struct pk_struct pk, struct cert_struct cert );
+  int verify( struct pk_struct pk, struct sign_stuct sign );
 #endif // SHARED_H

@@ -50,15 +50,20 @@ int main( void )
 {
   int exit_code = MBEDTLS_EXIT_FAILURE;
   struct pk_struct pk;
-  struct cert_struct cert; 
-  mbedtls_mpi_init( &pk.n ); mbedtls_mpi_init( &pk.a ); mbedtls_mpi_init( &pk.a0 );
-  mbedtls_mpi_init( &pk.y ); mbedtls_mpi_init( &pk.g ); mbedtls_mpi_init( &pk.h );
-  mbedtls_mpi_init( &cert.A ); mbedtls_mpi_init( &cert.e ); mbedtls_mpi_init( &cert.x );
-
+  struct cert_struct cert;
+  struct sign_struct sign;
+  mbedtls_mpi_init( &pk.n );    mbedtls_mpi_init( &pk.a );    mbedtls_mpi_init( &pk.a0 );
+  mbedtls_mpi_init( &pk.y );    mbedtls_mpi_init( &pk.g );    mbedtls_mpi_init( &pk.h );
+  mbedtls_mpi_init( &cert.A );  mbedtls_mpi_init( &cert.e );  mbedtls_mpi_init( &cert.x );
+  mbedtls_mpi_init( &sign.c );  mbedtls_mpi_init( &sign.s1 ); mbedtls_mpi_init( &sign.s2 );
+  mbedtls_mpi_init( &sign.s3 ); mbedtls_mpi_init( &sign.s4 ); mbedtls_mpi_init( &sign.T1 );
+  mbedtls_mpi_init( &sign.T2 ); mbedtls_mpi_init( &sign.T3 );
+  
   pk = manager_setup();
   print_pk_to_file( pk );
   cert = member_join( pk );
-  // print_cert_to_file( cert );
+  print_cert_to_file( cert );
+  sign = gen_sign( pk, cert );
 
   exit_code = MBEDTLS_EXIT_SUCCESS;
 
