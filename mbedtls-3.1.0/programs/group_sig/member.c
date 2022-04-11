@@ -39,6 +39,7 @@ int main( void )
 #include "mbedtls/bignum.h"
 #include "mbedtls/ctr_drbg.h"
 #include "mbedtls/entropy.h"
+#include "mbedtls/sha256.h"
 
 #include <string.h>
 #include <stdio.h>
@@ -46,6 +47,7 @@ int main( void )
 #include <math.h>
 
 #include "shared.h"
+mbedtls_sha256_context ctx;
 
 struct cert_struct member_join( struct pk_struct pk )
 {
@@ -188,6 +190,19 @@ struct cert_struct member_join( struct pk_struct pk )
   }
 
   return cert;
+}
+
+void add_hash( mbedtls_mpi x )
+{
+  size_t len = mbedtls_mpi_bitlen( &x ); // get size
+  char *buf = ( unsigned char *) malloc(len); // initlize buffer
+  mbedtls_mpi_write_string( &x, 10, buf, len, &len); // mpi to unsigned hash
+  if ( ( mbedtls_sha256_update( &ctx, (unsigned) buf, len) ) != 0)
+  {
+    mbedtls_mpi_write_file("ERROR. Could not hash ", &x, 10, NULL );
+    fflush( stdout );
+  } 
+  free(buf);
 }
 
 struct sign_struct gen_sign( struct pk_struct pk, struct cert_struct cert )
@@ -414,8 +429,39 @@ struct sign_struct gen_sign( struct pk_struct pk, struct cert_struct cert )
   mbedtls_mpi_mul_mpi( &d4, &mpi_val1, &mpi_val2 ); // g^r1 * h^r4
   mbedtls_mpi_mod_mpi( &d4, &d4, &pk.n ); // g^r1 * h^r4 mod n
 
-  // TODO: create signature
+  // Create signature
+  mbedtls_printf( "ok. Initilize sha256 variables, please wait...\n" );
+  fflush( stdout );
+  unsigned char *c_char[32];
+  mbedtls_sha256_init( &ctx );
+  if ( ( ret = mbedtls_sha256_starts( &ctx, 0) ) != 0 )
+  {
+    mbedtls_printf( "ERROR. mbedtls_sha256_starts_ret returns %d \n.", ret  );;
+  }
 
+  add_hash( pk.a0 );
+  add_hash( pk.a );
+  add_hash( pk.g );
+  add_hash( pk.h );
+  add_hash( pk.n );
+  add_hash( pk.y);
+
+  add_hash( sign.T1 );
+  add_hash( sign.T2 );
+  add_hash( sign.T3 );
+
+  add_hash( d1 );
+  add_hash( d2 );
+  add_hash( d3 );
+  add_hash( d4 );
+
+  if( ( ret = mbedtls_sha256_finish( &ctx, c_char ) ) != 0 )
+  {
+    mbedtls_printf( "ok. Finilize hash, please wait...\n" );
+    fflush( stdout );
+  }
+  mbedtls_mpi_read_string( &sign.c, 10, &c_char );
+  
   // s1 = r1 - c( e - 2^gamma_1 )
   mbedtls_printf( "ok. Calculate r1, please wait...\n" );
   fflush( stdout );

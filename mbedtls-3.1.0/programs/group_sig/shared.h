@@ -51,5 +51,5 @@
   struct cert_struct member_join( struct pk_struct pk );
   struct manager_info_struct manager_join(mbedtls_mpi x, mbedtls_mpi n, int z, mbedtls_mpi a0);
   struct sign_struct gen_sign( struct pk_struct pk, struct cert_struct cert );
-  int verify( struct pk_struct pk, struct sign_stuct sign );
+  // int verify( struct pk_struct pk, struct sign_stuct sign );
 #endif // SHARED_H
