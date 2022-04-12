@@ -291,7 +291,7 @@ struct sign_struct gen_sign( struct pk_struct pk, struct cert_struct cert )
   // Choose r3
   mbedtls_printf( "ok. Use seeded drbg to generate r3, please wait...\n" );
   fflush( stdout );
-  range_ceil = ceil(( epsilon * ( gamma_1 + 2 * lp + k + 1 )) >>3 );
+  range_ceil = ceil(( epsilon * ( gamma_1 + 2 * lp + k + 1 )) >> 3 );
   ret = mbedtls_mpi_fill_random( &r3, range_ceil , mbedtls_ctr_drbg_random, &ctr_drbg );
   if( ret != 0 )
   {
@@ -311,110 +311,36 @@ struct sign_struct gen_sign( struct pk_struct pk, struct cert_struct cert )
   // Compute d1  = T1^r1/(a^r2y^r3)
   mbedtls_printf( "ok. Calculate d1, please wait...\n" );
   fflush( stdout );
-  mbedtls_mpi neg;
-  mbedtls_mpi_init( &neg );
-  mbedtls_mpi_sub_mpi( &neg, &r1, &r1 );
-  if( mbedtls_mpi_cmp_int( &neg, 0 ) != 0 ) 
-  {
-    mbedtls_mpi_inv_mod( &mpi_val, &sign.T1, &pk.n ); // inverse T1
-    mbedtls_mpi_exp_mod( &mpi_val1, &mpi_val, &r1, &pk.n, NULL ); // T1^r1 mod n FIXME: take abs
-  }
-  else 
-  {
-    mbedtls_mpi_exp_mod( &mpi_val1, &sign.T1, &r1, &pk.n, NULL ); // T1^r1 mod n 
-  }
+  mbedtls_mpi_exp_mod( &mpi_val1, &sign.T1, &r1, &pk.n, NULL ); // T1^r1 mod n 
+  mbedtls_mpi_inv_mod( &mpi_val2, &pk.a, &pk.n ); // inv a mod n
+  mbedtls_mpi_exp_mod( &mpi_val, &mpi_val2, &r2, &pk.n, NULL ); // 1 / a^r2
+  mbedtls_mpi_mul_mpi( &mpi_val2, &mpi_val1, &mpi_val ); // ( 1 / a^r2 ) * T1^r1
+  mbedtls_mpi_mod_mpi( &mpi_val2, &mpi_val2, &pk.n ); // ( 1 / a^r2 ) * T1^r1 mod n
 
-  mbedtls_mpi_sub_mpi( &neg, &r2, &r2 );
-  if( mbedtls_mpi_cmp_int( &neg, 0 ) != 0 )
-  {
-    mbedtls_mpi_exp_mod( &mpi_val, &pk.a, &r2, &pk.n, NULL ); // a^r2 mod n FIXME: take abs
-  }
-  else
-  {
-    mbedtls_mpi_inv_mod( &mpi_val2, &pk.a, &pk.n ); // inv a mod n
-    mbedtls_mpi_exp_mod( &mpi_val, &mpi_val2, &r2, &pk.n, NULL ); // a^r2
-  }
-  mbedtls_mpi_mul_mpi( &mpi_val2, &mpi_val1, &mpi_val ); // a^r2 * T1^r1
-  mbedtls_mpi_mod_mpi( &mpi_val2, &mpi_val2, &pk.n ); // a^r2 * T1^r1 mod n
-
-  mbedtls_mpi_sub_mpi( &neg, &r3, &r3 );
-  if( mbedtls_mpi_cmp_int( &neg, 0 ) != 0 )
-  {
-    mbedtls_mpi_exp_mod( &mpi_val1, &pk.y, &r3, &pk.n, NULL); // y^r3 mod n FIXME: take abs
-  }
-  else
-  {
-    mbedtls_mpi_inv_mod( &mpi_val, &pk.y, &pk.n ); // inv y mod n
-    mbedtls_mpi_exp_mod( &mpi_val1, &mpi_val, &r3, &pk.n, NULL ); // y^r3 mod n
-  }
-  mbedtls_mpi_mul_mpi( &d1, &mpi_val1, &mpi_val2 ); 
-  mbedtls_mpi_mod_mpi( &d1, &d1, &pk.n );
+  mbedtls_mpi_inv_mod( &mpi_val, &pk.y, &pk.n ); // inv y mod n
+  mbedtls_mpi_exp_mod( &mpi_val1, &mpi_val, &r3, &pk.n, NULL ); // 1 / y^r3 mod n
+  mbedtls_mpi_mul_mpi( &d1, &mpi_val1, &mpi_val2 );  // ( a^r2 * T1^r1 ) / y^r3
+  mbedtls_mpi_mod_mpi( &d1, &d1, &pk.n ); // ( a^r2 * T1^r1 ) / y^r3 mod n 
 
   // Compute d2  T2^r1/g^r3
   mbedtls_printf( "ok. Calculate d2, please wait...\n" );
   fflush( stdout );
-  if( mbedtls_mpi_cmp_int( &neg, 0 ) != 0 ) 
-  {
-    mbedtls_mpi_exp_mod( &mpi_val, &pk.g, &r3, &pk.n, NULL ); // g^r3 mod n FIXME:take abs
-  }
-  else
-  {
-    mbedtls_mpi_inv_mod( &mpi_val1, &pk.g, &pk.n ); // inv g
-    mbedtls_mpi_exp_mod( &mpi_val, &mpi_val1, &r3, &pk.n, NULL ); // g^r3 FIXME:take abs
-  }
-
-  mbedtls_mpi_sub_mpi( &neg, &r1, &r1 );
-  if( mbedtls_mpi_cmp_int( &neg, 0 ) != 0 )
-  {
-    mbedtls_mpi_inv_mod( &mpi_val1, &sign.T2, &pk.n ); // inv T2
-    mbedtls_mpi_exp_mod( &d2, &mpi_val1, &r1, &pk.n, NULL ); // T2^r1 FIXME: take abs
-  }
-  else 
-  {
-    mbedtls_mpi_exp_mod( &mpi_val1, &sign.T2, &r1, &pk.n, NULL ); // T2^r1
-  }
-  mbedtls_mpi_mul_mpi( &d2, &mpi_val1, &mpi_val ); 
-  mbedtls_mpi_mod_mpi( &d2, &d2, &pk.n );
-  mbedtls_mpi_exp_mod( &mpi_val1, &sign.T2, &r1, &pk.n, NULL ); // T2^r1 
-  
+  mbedtls_mpi_inv_mod( &mpi_val1, &pk.g, &pk.n ); // inv g
+  mbedtls_mpi_exp_mod( &mpi_val, &mpi_val1, &r3, &pk.n, NULL ); // 1 / g^r3 
+  mbedtls_mpi_exp_mod( &mpi_val1, &sign.T2, &r1, &pk.n, NULL ); // T2^r1
+  mbedtls_mpi_mul_mpi( &d2, &mpi_val1, &mpi_val ); // T2^r1 * ( 1 / g^r3 )
+  mbedtls_mpi_mod_mpi( &d2, &d2, &pk.n ); // T2^r1 * ( 1 / g^r3 ) mod n
   
   // Compute d3 = g^r4
   mbedtls_printf( "ok. Calculate d3, please wait...\n" );
   fflush( stdout );
-  mbedtls_mpi_sub_mpi( &neg, &r4, &r4 );
-  if( mbedtls_mpi_cmp_int( &neg, 0 ) != 0  )
-  {
-    mbedtls_mpi_inv_mod( &mpi_val, &pk.g, &pk.n); // inv g
-    mbedtls_mpi_exp_mod( &d3, &mpi_val, &r4, &pk.n, NULL ); // g^r4 mod n FIXME: take absolute
-  }
-  else
-  {
-    mbedtls_mpi_exp_mod( &d3, &pk.g, &r4, &pk.n, NULL ); // g^r4 mod n
-  }
+  mbedtls_mpi_exp_mod( &d3, &pk.g, &r4, &pk.n, NULL ); // g^r4 mod n
 
   // Compute d4  = g^r1 * h^r4
   mbedtls_printf( "ok. Calculate d4, please wait...\n" );
   fflush( stdout );
-  if( mbedtls_mpi_cmp_int( &neg, 0 ) != 0  )
-  {
-    mbedtls_mpi_inv_mod( &mpi_val, &pk.h, &pk.n); // inv h
-    mbedtls_mpi_exp_mod( &mpi_val1, &mpi_val, &r4, &pk.n, NULL ); // h^r4 mod n FIXME: take absolute
-  }
-  else
-  {
-    mbedtls_mpi_exp_mod( &mpi_val1, &pk.h, &r4, &pk.n, NULL ); // g^r4 mod n
-  }
-  
-  mbedtls_mpi_sub_mpi( &neg, &r1, &r1 );
-  if( mbedtls_mpi_cmp_int( &neg, 0 ) != 0  )
-  {
-    mbedtls_mpi_inv_mod( &mpi_val, &pk.g, &pk.n); // inv g
-    mbedtls_mpi_exp_mod( &mpi_val2, &mpi_val, &r1, &pk.n, NULL ); // g^r1 mod n FIXME: take absolute
-  }
-  else
-  {
-    mbedtls_mpi_exp_mod( &mpi_val2, &pk.g, &r1, &pk.n, NULL ); // g^r1 mod n
-  }
+  mbedtls_mpi_exp_mod( &mpi_val1, &pk.h, &r4, &pk.n, NULL ); // h^r4 mod n
+  mbedtls_mpi_exp_mod( &mpi_val2, &pk.g, &r1, &pk.n, NULL ); // g^r1 mod n
   mbedtls_mpi_mul_mpi( &d4, &mpi_val1, &mpi_val2 ); // g^r1 * h^r4
   mbedtls_mpi_mod_mpi( &d4, &d4, &pk.n ); // g^r1 * h^r4 mod n
 
@@ -425,7 +351,7 @@ struct sign_struct gen_sign( struct pk_struct pk, struct cert_struct cert )
   mbedtls_sha256_init( &ctx );
   if ( ( ret = mbedtls_sha256_starts( &ctx, 0) ) != 0 )
   {
-    mbedtls_printf( "ERROR. mbedtls_sha256_starts_ret returns %d \n.", ret  );;
+    mbedtls_printf( "ERROR. mbedtls_sha256_starts_ret returns %d \n.", ret  );
   }
 
   add_hash( pk.a0 );
