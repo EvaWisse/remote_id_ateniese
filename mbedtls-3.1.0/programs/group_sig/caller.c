@@ -46,7 +46,7 @@ int main( void )
 
 #include "shared.h"
 
-void main( void )
+int main( void )
 {
   struct pk_struct pk;
   struct cert_struct cert;
@@ -64,6 +64,8 @@ void main( void )
   print_cert_to_file( cert );
   sign = gen_sign( pk, cert );
   print_sign_to_file( sign );
+  verify( pk, sign );
+  return 0;
 }
 
 void print_sign_to_file(  struct sign_struct sign )

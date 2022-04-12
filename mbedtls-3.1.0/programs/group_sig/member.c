@@ -167,8 +167,6 @@ struct cert_struct member_join( struct pk_struct pk )
   mbedtls_printf( "ok. Set membership certificate, please wait...\n" );
   fflush( stdout );
   
-  mbedtls_mpi_write_file( " manager_info.a = ", &manager_info.a, 10, NULL);
-  mbedtls_mpi_write_file( " manager_info.b = ", &manager_info.b, 10, NULL);
   mbedtls_mpi_safe_cond_swap( &cert.A, &manager_info.a, 1 );
   mbedtls_mpi_safe_cond_swap( &cert.e, &manager_info.b, 1 );
 
@@ -365,19 +363,29 @@ struct sign_struct gen_sign( struct pk_struct pk, struct cert_struct cert )
   add_hash( sign.T2 );
   add_hash( sign.T3 );
 
-  add_hash( d1 );
-  add_hash( d2 );
-  add_hash( d3 );
-  add_hash( d4 );
+  // add_hash( d1 );
+  // add_hash( d2 );
+  // add_hash( d3 );
+  // add_hash( d4 );
 
+  mbedtls_printf( "ok. Finilize hash, please wait...\n" );
+  fflush( stdout );
   if( ( ret = mbedtls_sha256_finish( &ctx, hash ) ) != 0 )
   {
-    mbedtls_printf( "ok. Finilize hash, please wait...\n" );
+    mbedtls_printf( "ERROR. Finilize hash\n" );
     fflush( stdout );
   }
-  mbedtls_mpi_read_string( &sign.c, 10, hash );
-  
-  // s1 = r1 - c( e - 2^gamma_1 )
+
+  mbedtls_printf( "ok. Convert hash to Bignum, please wait...\n" );
+  fflush( stdout );
+  char buffer[256];
+  int j = 0;
+  for ( int i = 0; i < 32; i++ )
+  {
+    j += snprintf(buffer+j, 8, "%d", hash[i]); // concatenate values
+  }
+  mbedtls_mpi_read_string( &sign.c, 10, buffer); // write to sign.c
+
   mbedtls_printf( "ok. Calculate r1, please wait...\n" );
   fflush( stdout );
   int temp = 1;
