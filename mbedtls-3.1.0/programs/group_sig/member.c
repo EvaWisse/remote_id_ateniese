@@ -53,7 +53,6 @@ struct cert_struct member_join( struct pk_struct pk )
 {
   mbedtls_printf( "\n\n####### JOIN MEMBER PART 1 ####### \n");
   fflush( stdout );
-  int exit_code = MBEDTLS_EXIT_FAILURE;
 
   // Initilize certificate
   mbedtls_printf( "ok. Intilize certificate, please wait...\n" );
@@ -170,13 +169,8 @@ struct cert_struct member_join( struct pk_struct pk )
   
   mbedtls_mpi_write_file( " manager_info.a = ", &manager_info.a, 10, NULL);
   mbedtls_mpi_write_file( " manager_info.b = ", &manager_info.b, 10, NULL);
-  cert.A = manager_info.a;
-  cert.e = manager_info.b;
-
-  mbedtls_mpi_write_file( " cert.a = ", &cert.A, 10, NULL);
-  mbedtls_mpi_write_file( " cert.b = ", &cert.e, 10, NULL);
-  
-  exit_code = MBEDTLS_EXIT_SUCCESS;
+  mbedtls_mpi_safe_cond_swap( &cert.A, &manager_info.a, 1 );
+  mbedtls_mpi_safe_cond_swap( &cert.e, &manager_info.b, 1 );
 
   mbedtls_printf( "ok. Clean up and return, please wait...\n" );
   fflush( stdout );
@@ -184,25 +178,20 @@ struct cert_struct member_join( struct pk_struct pk )
   mbedtls_mpi_free( &x );   mbedtls_mpi_free( &manager_info.a );  mbedtls_mpi_free( &manager_info.b );  mbedtls_mpi_free( &mpi_range); 
   mbedtls_mpi_free( &r );   mbedtls_entropy_free( &entropy );     mbedtls_ctr_drbg_free( &ctr_drbg );
 
-  if( exit_code != MBEDTLS_EXIT_SUCCESS )
-  {
-	  mbedtls_printf( "\nAn error occurred.\n" );
-  }
-
   return cert;
 }
 
 void add_hash( mbedtls_mpi x )
 {
   size_t len = mbedtls_mpi_bitlen( &x ); // get size
-  char *buf = ( unsigned char *) malloc(len); // initlize buffer
+  const unsigned char *buf = ( unsigned char *) malloc(len); // initlize buffer
   mbedtls_mpi_write_string( &x, 10, buf, len, &len); // mpi to unsigned hash
-  if ( ( mbedtls_sha256_update( &ctx, (unsigned) buf, len) ) != 0)
+  if ( ( mbedtls_sha256_update( &ctx, buf, len) ) != 0)
   {
     mbedtls_mpi_write_file("ERROR. Could not hash ", &x, 10, NULL );
     fflush( stdout );
   } 
-  free(buf);
+  free((char*)buf);
 }
 
 struct sign_struct gen_sign( struct pk_struct pk, struct cert_struct cert )
@@ -432,7 +421,7 @@ struct sign_struct gen_sign( struct pk_struct pk, struct cert_struct cert )
   // Create signature
   mbedtls_printf( "ok. Initilize sha256 variables, please wait...\n" );
   fflush( stdout );
-  unsigned char *c_char[32];
+  uint8_t hash[32];
   mbedtls_sha256_init( &ctx );
   if ( ( ret = mbedtls_sha256_starts( &ctx, 0) ) != 0 )
   {
@@ -455,12 +444,12 @@ struct sign_struct gen_sign( struct pk_struct pk, struct cert_struct cert )
   add_hash( d3 );
   add_hash( d4 );
 
-  if( ( ret = mbedtls_sha256_finish( &ctx, c_char ) ) != 0 )
+  if( ( ret = mbedtls_sha256_finish( &ctx, hash ) ) != 0 )
   {
     mbedtls_printf( "ok. Finilize hash, please wait...\n" );
     fflush( stdout );
   }
-  mbedtls_mpi_read_string( &sign.c, 10, &c_char );
+  mbedtls_mpi_read_string( &sign.c, 10, hash );
   
   // s1 = r1 - c( e - 2^gamma_1 )
   mbedtls_printf( "ok. Calculate r1, please wait...\n" );
@@ -484,7 +473,7 @@ struct sign_struct gen_sign( struct pk_struct pk, struct cert_struct cert )
   mbedtls_mpi_read_string( &mpi_val, 10, ptr ); // 2^lambda_1
   mbedtls_mpi_sub_mpi( &mpi_val1, &cert.x, &mpi_val ); //  x - 2^lambda_1
   mbedtls_mpi_mul_mpi( &mpi_val2, &mpi_val1, &sign.c ); // c * ( x - 2^lambda_1 )
-  mbedtls_mpi_sub_mpi( &sign.s1, &r2, &mpi_val2 ); // r2 - c * ( x - 2^lambda_1 )
+  mbedtls_mpi_sub_mpi( &sign.s2, &r2, &mpi_val2 ); // r2 - c * ( x - 2^lambda_1 )
 
   // s3 = r3 - c * e * w
   mbedtls_printf( "ok. Calculate r3, please wait...\n" );

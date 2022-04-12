@@ -46,9 +46,8 @@ int main( void )
 
 #include "shared.h"
 
-int main( void )
+void main( void )
 {
-  int exit_code = MBEDTLS_EXIT_FAILURE;
   struct pk_struct pk;
   struct cert_struct cert;
   struct sign_struct sign;
@@ -64,15 +63,24 @@ int main( void )
   cert = member_join( pk );
   print_cert_to_file( cert );
   sign = gen_sign( pk, cert );
+  print_sign_to_file( sign );
+}
 
-  exit_code = MBEDTLS_EXIT_SUCCESS;
-
-  if( exit_code != MBEDTLS_EXIT_SUCCESS )
+void print_sign_to_file(  struct sign_struct sign )
+{
+  FILE *fout;
+  if( ( fout = fopen( "group_sig/sign.txt", "w" ) ) == NULL )
   {
-      mbedtls_printf( "\nAn error occurred.\n" );
+    mbedtls_printf( " failed.  Could not create result.txt\n" );
   }
-
-  mbedtls_exit( exit_code );
+  mbedtls_mpi_write_file( "sign.c = ", &sign.c, 10, fout );
+  mbedtls_mpi_write_file( "sign.s1 = ", &sign.s1, 10, fout );
+  mbedtls_mpi_write_file( "sign.s2 = ", &sign.s2, 10, fout );
+  mbedtls_mpi_write_file( "sign.s3 = ", &sign.s3, 10, fout );
+  mbedtls_mpi_write_file( "sign.s4 = ", &sign.s4, 10, fout );
+  mbedtls_mpi_write_file( "sign.T1 = ", &sign.T1, 10, fout );
+  mbedtls_mpi_write_file( "sign.T2 = ", &sign.T2, 10, fout );
+  mbedtls_mpi_write_file( "sign.T3 = ", &sign.T3, 10, fout );
 }
 
 void print_cert_to_file( struct cert_struct cert)
@@ -85,7 +93,6 @@ void print_cert_to_file( struct cert_struct cert)
   mbedtls_mpi_write_file( "cert.A = ", &cert.A, 10, fout );
   mbedtls_mpi_write_file( "cert.e = ", &cert.e, 10, fout );
   mbedtls_mpi_write_file( "cert.x = ", &cert.x, 10, fout );
-
 }
 
 void print_pk_to_file( struct pk_struct pk )

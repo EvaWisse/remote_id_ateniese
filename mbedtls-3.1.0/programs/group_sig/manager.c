@@ -276,7 +276,7 @@ struct manager_info_struct manager_join(mbedtls_mpi x, mbedtls_mpi n, int z, mbe
     // Use seeded drbg to generate a secret exponent alpha ∈  ]0, 2^λ2[
     mbedtls_printf( "ok. Use seeded drbg to get ei, please wait...\n" );
     fflush( stdout );
-    ret = mbedtls_mpi_fill_random( &info.a, 5, mbedtls_ctr_drbg_random, &ctr_drbg ); //FIXME: use correct lenght
+    ret = mbedtls_mpi_fill_random( &info.b, 5, mbedtls_ctr_drbg_random, &ctr_drbg ); //FIXME: use correct lenght
     if( ret != 0 )
     {
       mbedtls_printf("ERROR. mbedtls_mpi_fill_random got ret = %d\n", ret);
@@ -285,14 +285,9 @@ struct manager_info_struct manager_join(mbedtls_mpi x, mbedtls_mpi n, int z, mbe
     // Compute Ai = (C2a0)^1/ei mod n
     mbedtls_printf( "ok. Compute Ai, please wait...\n" );
     fflush( stdout );
-     mbedtls_mpi_inv_mod( &info.b, &a0, &n ); 
-    mbedtls_mpi_write_file( " inv a0 = ", &a0, 10, NULL);
-
     mbedtls_mpi_mul_mpi( &mpi_val, &a0, &x ); // C2*a0 
-    mbedtls_mpi_mod_mpi( &mpi_val, &mpi_val, &n ); // C2*a0 mod n
-    mbedtls_mpi_inv_mod( &info.b, &mpi_val, &n ); // inv C2*a0 mod n
-    // mbedtls_mpi_inv_mod( &info.b, &x, &n );
-    mbedtls_mpi_write_file( " inv c2 = ", &info.b, 10, NULL);
+    mbedtls_mpi_inv_mod( &mpi_val1, &mpi_val, &n ); // 1 / C2*a0 
+    mbedtls_mpi_exp_mod( &info.a, &mpi_val1, &info.b, &n, NULL ); // ( 1 / C2*a0 )^e
 
     mbedtls_printf( "ok. Clean up and return, please wait...\n" );
     fflush( stdout );
