@@ -3,7 +3,7 @@
 
   // Define the security parameters
   static const uint64_t epsilon = 2;
-  static const uint64_t k = 32;
+  static const uint64_t k = 256;
   static const uint64_t lp = 15;
   static const uint64_t lambda_2 = (4 * lp) + 1;
   static const uint64_t lambda_1 = (epsilon * (lambda_2 + k) + 2) + 1;

@@ -3,6 +3,8 @@
  *
  * This program call the group signature functions and demonstrates its use
  * 
+ * Max value is 2^(8*1024) since BEDTLS_MPI_MAX_SIZE = 1024 -> the Maximum number of bytes for usable MPIs.
+ * 
  */
 
 #include "mbedtls/build_info.h"
