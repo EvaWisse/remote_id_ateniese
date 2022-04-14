@@ -257,8 +257,8 @@ int gen_sign( struct pk_struct pk, struct cert_struct cert, struct sign_struct *
   mbedtls_mpi_exp_mod( &d3, &pk.g, &r4, &pk.n, NULL ); // g^r4 mod n
 
   // Compute d4  = g^r1 * h^r4
-  mbedtls_mpi_exp_mod( &mpi_val1, &pk.h, &r4, &pk.n, NULL ); // h^r4 mod n
   mbedtls_mpi_exp_mod( &mpi_val2, &pk.g, &r1, &pk.n, NULL ); // g^r1 mod n
+  mbedtls_mpi_exp_mod( &mpi_val1, &pk.h, &r4, &pk.n, NULL ); // h^r4 mod n
   mbedtls_mpi_mul_mpi( &d4, &mpi_val1, &mpi_val2 ); // g^r1 * h^r4
   mbedtls_mpi_mod_mpi( &d4, &d4, &pk.n ); // g^r1 * h^r4 mod n
 
@@ -281,8 +281,14 @@ int gen_sign( struct pk_struct pk, struct cert_struct cert, struct sign_struct *
 
   // if ( create_hash( d1 ) !=0 ) goto exit;
   // if ( create_hash( d2 ) !=0 ) goto exit;
-  // if ( create_hash( d3 ) !=0 ) goto exit;
+  if ( create_hash( d3 ) !=0 ) goto exit;
   // if ( create_hash( d4 ) !=0 ) goto exit;
+
+  printf("Member\n");
+  mbedtls_mpi_write_file("d1\t", &d1, 10, NULL );
+  mbedtls_mpi_write_file("d2\t", &d2, 10, NULL );
+  mbedtls_mpi_write_file("d3\t", &d3, 10, NULL );
+  mbedtls_mpi_write_file("d4\t", &d4, 10, NULL );
 
   if( ( mbedtls_sha256_finish( &ctx, hash ) ) != 0 )
   {

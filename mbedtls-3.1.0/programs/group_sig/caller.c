@@ -82,14 +82,14 @@ int main( void )
   if ( verify( pk, sign ) != 0 ) printf(  "authentication failed \n");
   else printf("authenticated\n");
   
-  if ( open( pk, sign, cert ) !=0 )
-  {
-    printf("could not be opened" );
-  }
-  else 
-  { 
-    printf("opend\n");
-  }
+  // if ( open( pk, sign, cert ) !=0 )
+  // {
+  //   printf("could not be opened" );
+  // }
+  // else 
+  // { 
+  //   printf("opend\n");
+  // }
 
 
 exit:

@@ -73,14 +73,15 @@ int verify( struct pk_struct pk, struct sign_struct sign )
   char char_temp[64];
   char buffer[256];
   uint8_t hash[32];
-  mbedtls_mpi mpi_val, mpi_val1, mpi_val2, d1, d2, d3, d4, c, max, two; 
+  mbedtls_mpi mpi_val, mpi_val1, mpi_val2, d1, d2, d3, d4, c, max, two, neg, pos, zero; 
 
   mbedtls_mpi_init( &mpi_val ); mbedtls_mpi_init( &mpi_val1 );  mbedtls_mpi_init( &mpi_val2 ); 
   mbedtls_mpi_init( &d1 );      mbedtls_mpi_init( &d2 );        mbedtls_mpi_init( &d3 );     
   mbedtls_mpi_init( &d4 );      mbedtls_mpi_init( &two );       mbedtls_mpi_init( &c );
-  mbedtls_mpi_init( &max );     mbedtls_sha256_init( &ctx_hash );
-  mbedtls_mpi_read_string( &two, 10, "2" )  ;
+  mbedtls_mpi_init( &neg );     mbedtls_mpi_init( &pos );       mbedtls_mpi_init( &max );     
+  mbedtls_sha256_init( &ctx_hash );  mbedtls_mpi_read_string( &two, 10, "2" )  ;
   mbedtls_mpi_read_string( &max, 10, "1044388881413152506691752710716624382579964249047383780384233483283953907971557456848826811934997558340890106714439262837987573438185793607263236087851365277945956976543709998340361590134383718314428070011855946226376318839397712745672334684344586617496807908705803704071284048740118609114467977783598029006686938976881787785946905630190260940599579453432823469303026696443059025015972399867714215541693835559885291486318237914434496734087811872639496475100189041349008417061675093668333850551032972088269550769983616369411933015213796825837188091833656751221318492846368125550225998300412344784862595674492194617023806505913245610825731835380087608622102834270197698202313169017678006675195485079921636419370285375124784014907159135459982790513399611551794271106831134090584272884279791554849782954323534517065223269061394905987693002122963395687782878948440616007412945674919823050571642377154816321380631045902916136926708342856440730447899971901781465763473223850267253059899795996090799469201774624817718449867455659250178329070473119433165550807568221846571746373296884912819520317457002440926616910874148385078411929804522981857338977648103126085903001302413467189726673216491511131602920781738033436090243804708340403154190335");
+  mbedtls_mpi_read_string( &zero, 10, "0" );
 
   // Calculate d1 = a0^c T1^(s1 - c2^gamma_1) / (a^(s2-c2^delta_1) y^s3 )
   snprintf(char_temp, 64, "%lld", gamma_1);
@@ -122,22 +123,54 @@ int verify( struct pk_struct pk, struct sign_struct sign )
 
   // Compute d3 =  T2^c * g^s4
   mbedtls_mpi_exp_mod( &mpi_val, &sign.T2, &sign.c, &pk.n, NULL ); // T2^c 
-	mbedtls_mpi_exp_mod( &mpi_val2, &pk.g, &sign.s4, &pk.n, NULL ); // g^s4
+  mbedtls_mpi_sub_mpi( &neg, &sign.s4, &sign.s4 );
+  if( mbedtls_mpi_cmp_int( &neg, 0 ) == 0 )
+  {
+    mbedtls_mpi_inv_mod( &mpi_val1, &pk.g, &pk.n ); // inv g mod n
+    mbedtls_mpi_add_abs( &pos, &sign.s4, &zero);
+    mbedtls_mpi_exp_mod( &mpi_val2, &mpi_val1, &pos, &pk.n, NULL ); // g^s4 
+  }
+  else 
+  {
+    mbedtls_mpi_exp_mod( &mpi_val2, &pk.g, &sign.s4, &pk.n, NULL ); // g^s4
+  }
   mbedtls_mpi_mul_mpi( &d3, &mpi_val, &mpi_val2 ); // T2^c * g^s4
   mbedtls_mpi_mod_mpi( &d3, &d3, &pk.n); // T2^c * g^s4 mod n 
 
-  // Compute T3^c g^(s1- c2^gamma1) * h^s4
+  // Compute d4 = T3^c g^(s1- c2^gamma1) * h^s4
   snprintf(char_temp, 64, "%lld", gamma_1);
   mbedtls_mpi_read_string( &mpi_val, 10, char_temp );
   mbedtls_mpi_exp_mod( &mpi_val, &two, &mpi_val, &max, NULL ); // 2^gamma_1
   mbedtls_mpi_mul_mpi( &mpi_val1, &mpi_val, &sign.c ); // c*2^gamma_1
   mbedtls_mpi_sub_mpi( &mpi_val2, &sign.s1, &mpi_val1 ); // s1 - c*2^gamma_1
 
-  mbedtls_mpi_exp_mod( &mpi_val1, &pk.g, &mpi_val2, &pk.n, NULL ); // g^(s1 - c*2^gamma_1) 
+  mbedtls_mpi_sub_mpi( &neg, &mpi_val2, &mpi_val2 );
+  if( mbedtls_mpi_cmp_int( &neg, 0 ) == 0 )
+  {
+    mbedtls_mpi_inv_mod( &mpi_val, &pk.g, &pk.n ); // inv g mod n
+    mbedtls_mpi_add_abs( &pos, &mpi_val2, &zero);
+    mbedtls_mpi_exp_mod( &mpi_val1, &mpi_val, &pos, &pk.n, NULL ); // g^(s1 - c*2^gamma_1) 
+  }
+  else 
+  {
+    mbedtls_mpi_exp_mod( &mpi_val1, &pk.g, &mpi_val2, &pk.n, NULL ); // g^(s1 - c*2^gamma_1) 
+  }
+
   mbedtls_mpi_exp_mod( &mpi_val, &sign.T3, &sign.c, &pk.n, NULL ); // T3^c mod n 
   mbedtls_mpi_mul_mpi( &mpi_val2, &mpi_val1, &mpi_val); // T3^c * g^(s1 - c*2^gamma_1) 
   mbedtls_mpi_mod_mpi( &mpi_val2, &mpi_val2, &pk.n ); //  T3^c * g^(s1 - c*2^gamma_1)  mod n 
-  mbedtls_mpi_exp_mod( &mpi_val, &pk.h, &sign.s4, &pk.n, NULL ); // h^s4 mod n 
+  
+  mbedtls_mpi_sub_mpi( &neg, &sign.s4, &sign.s4 );
+  if( mbedtls_mpi_cmp_int( &neg, 0 ) == 0 )
+  {
+    mbedtls_mpi_inv_mod( &mpi_val1, &pk.h, &pk.n); // inv h mod n 
+    mbedtls_mpi_add_abs( &pos, &sign.s4, &zero);
+    mbedtls_mpi_exp_mod( &mpi_val, &mpi_val1, &pos, &pk.n, NULL ); // h^s4 mod n
+  }
+  else 
+  {
+    mbedtls_mpi_exp_mod( &mpi_val, &pk.h, &sign.s4, &pk.n, NULL ); // h^s4 mod n 
+  }
   mbedtls_mpi_mul_mpi( &d4, &mpi_val2, &mpi_val); // h^s4 * T3^c * g^(s1 - c*2^gamma_1)
   mbedtls_mpi_mod_mpi( &d4, &d4, &pk.n ); // // h^s4 * T3^c * g^(s1 - c*2^gamma_1) mod n
 
@@ -160,8 +193,15 @@ int verify( struct pk_struct pk, struct sign_struct sign )
 
   // if ( verify_hash( d1 ) != 0 ) goto exit;
   // if ( verify_hash( d2 ) != 0 ) goto exit;
-  // if ( verify_hash( d3 ) != 0 ) goto exit;
-  // if ( verify_hash( d4 ) != 0 ) goto exit;
+  if ( verify_hash( d3 ) != 0 ) goto exit;
+  if ( verify_hash( d4 ) != 0 ) goto exit;
+
+
+  printf("\n\nVerifier\n");
+  mbedtls_mpi_write_file("d1\t", &d1, 10, NULL );
+  mbedtls_mpi_write_file("d2\t", &d2, 10, NULL );
+  mbedtls_mpi_write_file("d3\t", &d3, 10, NULL );
+  mbedtls_mpi_write_file("d4\t", &d4, 10, NULL );
 
   if( mbedtls_sha256_finish( &ctx_hash, hash ) != 0 )
   {
