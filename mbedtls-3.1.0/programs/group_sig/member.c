@@ -130,7 +130,7 @@ exit:
   return exit_code;
 }
 
-int add_hash( mbedtls_mpi x )
+int create_hash( mbedtls_mpi x )
 {
   int  error_code = EXIT_FAILURE;
   size_t len = mbedtls_mpi_bitlen( &x ); // get size
@@ -268,21 +268,21 @@ int gen_sign( struct pk_struct pk, struct cert_struct cert, struct sign_struct *
     goto exit;
   }
 
-  if ( add_hash( pk.a0 ) !=0 ) goto exit;
-  if ( add_hash( pk.a ) !=0 ) goto exit;
-  if ( add_hash( pk.g ) !=0 ) goto exit;
-  if ( add_hash( pk.h ) !=0 ) goto exit;
-  if ( add_hash( pk.n ) !=0 ) goto exit;
-  if ( add_hash( pk.y) !=0 ) goto exit;
+  if ( create_hash( pk.a0 ) !=0 ) goto exit;
+  if ( create_hash( pk.a ) !=0 ) goto exit;
+  if ( create_hash( pk.g ) !=0 ) goto exit;
+  if ( create_hash( pk.h ) !=0 ) goto exit;
+  if ( create_hash( pk.n ) !=0 ) goto exit;
+  if ( create_hash( pk.y) !=0 ) goto exit;
 
-  if ( add_hash( sign->T1 ) !=0 ) goto exit;
-  if ( add_hash( sign->T2 ) !=0 ) goto exit;
-  if ( add_hash( sign->T3 ) !=0 ) goto exit;
+  if ( create_hash( sign->T1 ) !=0 ) goto exit;
+  if ( create_hash( sign->T2 ) !=0 ) goto exit;
+  if ( create_hash( sign->T3 ) !=0 ) goto exit;
 
-  // if ( add_hash( d1 ) !=0 ) goto exit;
-  // if ( add_hash( d2 ) !=0 ) goto exit;
-  // if ( add_hash( d3 ) !=0 ) goto exit;
-  // if ( add_hash( d4 ) !=0 ) goto exit;
+  // if ( create_hash( d1 ) !=0 ) goto exit;
+  // if ( create_hash( d2 ) !=0 ) goto exit;
+  // if ( create_hash( d3 ) !=0 ) goto exit;
+  // if ( create_hash( d4 ) !=0 ) goto exit;
 
   if( ( mbedtls_sha256_finish( &ctx, hash ) ) != 0 )
   {

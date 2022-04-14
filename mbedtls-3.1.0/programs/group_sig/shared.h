@@ -53,4 +53,6 @@
   int manager_join_part1( mbedtls_mpi *a, mbedtls_mpi *b );
   int member_join( struct pk_struct pk, struct cert_struct *cert );
   int gen_sign( struct pk_struct pk, struct cert_struct cert, struct sign_struct *sign );
+  int verify( struct pk_struct pk, struct sign_struct sign );
+  int open( struct pk_struct pk, struct sign_struct sign, struct cert_struct cert );
 #endif // SHARED_H

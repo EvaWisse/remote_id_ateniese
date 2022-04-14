@@ -79,7 +79,18 @@ int main( void )
     goto exit;
   }
   print_sign_to_file( sign );
-  // verify( pk, sign );
+  if ( verify( pk, sign ) != 0 ) printf(  "authentication failed \n");
+  else printf("authenticated\n");
+  
+  if ( open( pk, sign, cert ) !=0 )
+  {
+    printf("could not be opened" );
+  }
+  else 
+  { 
+    printf("opend\n");
+  }
+
 
 exit:
   return 0;

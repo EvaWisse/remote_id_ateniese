@@ -302,35 +302,37 @@ exit:
   return exit_code;
 }
 
-// void open( struct pk_struct pk, struct sign_stuct sign, struct cert_struct cert )
-// {
-//   mbedtls_printf( "\n\n####### MANAGER OPEN ####### \n" );
-//   fflush( stdout );
-//   if( verify( pk, sign ) )
-//   {
-//     // Initilize and introduce temperoral variables
-//     mbedtls_printf( "ok. Initilize and introduce temperoral variables, please wait...\n" );
-//     fflush( stdout );
-//     mbedtls_mpi A, mpi_val;
-//     mbedtls_mpi_init( &A ); mbedtls_mpi_init( &mpi_val );
+int open( struct pk_struct pk, struct sign_struct sign, struct cert_struct cert )
+{
+  int exit_code = EXIT_FAILURE;
+  if( verify( pk, sign ) )
+  {
+    // Initilize and introduce temperoral variables
+    mbedtls_mpi A, mpi_val;
+    mbedtls_mpi_init( &A ); mbedtls_mpi_init( &mpi_val );
 
-//     // Calculate Ai 
-//     mbedtls_printf( "ok. Caluclate Ai, please wait...\n" );
-//     fflush( stdout );
-//     mbedtls_mpi_exp_mod( &mpi_val, &sign.T2, &cert.x, &pk.n, NULL); // T2^c mod n 
-//     mbedtls_mpi_inv_mod( &mpi_val, &mpi_val, &pk.n ); // inv T2^x mod n 
-//     mbedtls_mpi_mul_mpi( &A, &mpi_val, &sign.T1 ); // T1/T2^x
-//     mbedtls_mpi_mod_mpi( &A, &A, &pk.n ); //  T1/T2^x mod n 
+    // Calculate Ai
+    mbedtls_mpi_exp_mod( &mpi_val, &sign.T2, &cert.x, &pk.n, NULL); // T2^c mod n 
+    mbedtls_mpi_inv_mod( &mpi_val, &mpi_val, &pk.n ); // inv T2^x mod n 
+    mbedtls_mpi_mul_mpi( &A, &mpi_val, &sign.T1 ); // T1/T2^x
+    mbedtls_mpi_mod_mpi( &A, &A, &pk.n ); //  T1/T2^x mod n 
 
-//     // See whether Ai matches the certificate value
-//     mbedtls_printf( "ok. Check whether A matches the certificate value, please wait...\n" );
-//     fflush( stdout );
-//   }
-//   else 
-//   {
-//     mbedtls_printf( "ok. Signature can not be verified , please wait...\n" );
-//     fflush( stdout );
-//   }
-// }
+    // See whether Ai matches the certificate value
+    if ( mbedtls_mpi_cmp_mpi( &A, &cert.A ) != 0 ) 
+    { 
+      goto exit;
+    }
+
+  }
+  else 
+  {
+    goto exit;
+  }
+
+  exit_code = EXIT_SUCCESS;
+
+exit:
+  return exit_code;
+}
 
 #endif /* MBEDTLS_BIGNUM_C && MBEDTLS_FS_IO */

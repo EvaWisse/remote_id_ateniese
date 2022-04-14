@@ -1,2 +1,2 @@
-cert.A = 1024
-cert.e = 10
+cert.A = 131072
+cert.e = 17
