@@ -2,9 +2,9 @@
 #define SHARED_H
 
   // Define the security parameters
-  static const uint64_t epsilon = 1;
-  static const uint64_t k = 4;
-  static const uint64_t lp = 6;
+  static const uint64_t epsilon = 2;
+  static const uint64_t k = 32;
+  static const uint64_t lp = 1048;
   static const uint64_t lambda_2 = (4 * lp) + 1;
   static const uint64_t lambda_1 = (epsilon * (lambda_2 + k) + 2) + 1;
   static const uint64_t gamma_2 = (lambda_1 + 2) + 1;
@@ -45,12 +45,12 @@
     mbedtls_mpi T3;
   };
 
-  struct pk_struct manager_setup();
+  struct pk_struct manager_setup( int *exit_code );
   void print_pk_to_file( struct pk_struct pk );
-  void print_cert_to_file( struct cert_struct cert );
-  struct cert_struct member_join( struct pk_struct pk );
-  struct manager_info_struct manager_join(mbedtls_mpi x, mbedtls_mpi n, int z, mbedtls_mpi a0);
-  struct sign_struct gen_sign( struct pk_struct pk, struct cert_struct cert );
-  void verify( struct pk_struct pk, struct sign_struct sign );
+  void print_cert_to_file( struct cert_struct cert);
   void print_sign_to_file(  struct sign_struct sign );
+  int manager_join_part2( mbedtls_mpi C2, mbedtls_mpi n, mbedtls_mpi a0, mbedtls_mpi *A, mbedtls_mpi *e );
+  int manager_join_part1( mbedtls_mpi *a, mbedtls_mpi *b );
+  int member_join( struct pk_struct pk, struct cert_struct *cert );
+  int gen_sign( struct pk_struct pk, struct cert_struct cert, struct sign_struct *sign );
 #endif // SHARED_H

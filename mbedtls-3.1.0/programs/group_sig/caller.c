@@ -48,6 +48,7 @@ int main( void )
 
 int main( void )
 {
+  int exit_code = MBEDTLS_EXIT_FAILURE; 
   struct pk_struct pk;
   struct cert_struct cert;
   struct sign_struct sign;
@@ -57,14 +58,30 @@ int main( void )
   mbedtls_mpi_init( &sign.c );  mbedtls_mpi_init( &sign.s1 ); mbedtls_mpi_init( &sign.s2 );
   mbedtls_mpi_init( &sign.s3 ); mbedtls_mpi_init( &sign.s4 ); mbedtls_mpi_init( &sign.T1 );
   mbedtls_mpi_init( &sign.T2 ); mbedtls_mpi_init( &sign.T3 );
-  
-  pk = manager_setup();
+ 
+  pk = manager_setup( &exit_code );
+  if ( exit_code != 0 )
+  {
+    mbedtls_printf( " Failed setup ");
+    goto exit;
+  }
   print_pk_to_file( pk );
-  cert = member_join( pk );
+  if ( member_join( pk, &cert ) != 0 )
+  {
+    mbedtls_printf( " Failed join ");
+    goto exit;
+  }
   print_cert_to_file( cert );
-  sign = gen_sign( pk, cert );
+  
+  if ( gen_sign( pk, cert, &sign ) != 0 )
+   {
+    mbedtls_printf( " Failed signature gen ");
+    goto exit;
+  }
   print_sign_to_file( sign );
-  verify( pk, sign );
+  // verify( pk, sign );
+
+exit:
   return 0;
 }
 
